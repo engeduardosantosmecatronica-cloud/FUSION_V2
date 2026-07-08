@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -122,8 +122,8 @@ public sealed class MainForm : Form
             ColumnCount = 1,
             BackColor = TerminalTheme.Background,
         };
-        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
-        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 74));
+        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 46));
         shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         shell.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         shell.Controls.Add(BuildHeader(), 0, 0);
@@ -179,82 +179,74 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Background,
-            Padding = new Padding(12, 8, 12, 6),
+            Padding = new Padding(16, 10, 16, 8),
             RowCount = 1,
             ColumnCount = 3,
         };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 330));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 410));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430));
 
-        var brand = new TableLayoutPanel
+        var brand = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Background,
-            RowCount = 2,
-            ColumnCount = 1,
-        };
-        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
-        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
-        brand.Controls.Add(new Label
-        {
-            Text = "Fusion Control Center",
-            Dock = DockStyle.Fill,
-            ForeColor = TerminalTheme.Text,
-            Font = new Font("Segoe UI Semibold", 15f, FontStyle.Bold),
-            TextAlign = ContentAlignment.BottomLeft,
-        }, 0, 0);
-        brand.Controls.Add(new Label
-        {
-            Text = "Execucao, leitura operacional e monitoramento MT5",
-            Dock = DockStyle.Fill,
-            ForeColor = TerminalTheme.Muted,
-            Font = new Font("Segoe UI", 8.75f),
-            TextAlign = ContentAlignment.TopLeft,
-        }, 0, 1);
-
-        var quickMenu = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = TerminalTheme.Background,
-            Padding = new Padding(4, 10, 4, 4),
             WrapContents = false,
+            Padding = new Padding(0, 7, 0, 0),
         };
-        quickMenu.Controls.Add(HeaderButton("Grafico", 76, ShowChartInWorkspace));
-        quickMenu.Controls.Add(HeaderButton("Probabilidades", 118, () => SelectReadingTabInWorkspace("Probabilidades")));
-        quickMenu.Controls.Add(HeaderButton("Matriz", 78, () => SelectReadingTabInWorkspace("Matriz Operacional")));
-        quickMenu.Controls.Add(HeaderButton("Sinais", 72, () => SelectReadingTabInWorkspace("Sinais")));
-        quickMenu.Controls.Add(HeaderButton("Ordens", 74, () => SelectReadingTabInWorkspace("Ordens")));
-        quickMenu.Controls.Add(HeaderButton("Backtest", 82, () => SelectBottomTab("Backtest")));
+        brand.Controls.Add(new Label
+        {
+            Text = "FUSION",
+            AutoSize = true,
+            ForeColor = TerminalTheme.Text,
+            Font = new Font("Segoe UI Semibold", 21f, FontStyle.Bold),
+            Margin = new Padding(0, 0, 10, 0),
+        });
+        brand.Controls.Add(new Label
+        {
+            Text = "Control Center",
+            AutoSize = true,
+            ForeColor = TerminalTheme.Primary,
+            Font = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+            Padding = new Padding(0, 14, 0, 0),
+        });
+
+        var center = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Background,
+            WrapContents = false,
+            Padding = new Padding(8, 14, 8, 0),
+        };
+        center.Controls.Add(HeaderButton("Home", 74, ShowChartInWorkspace));
+        center.Controls.Add(HeaderButton("Mercado", 86, ShowChartInWorkspace));
+        center.Controls.Add(HeaderButton("Analise", 82, () => SelectReadingTabInWorkspace("Probabilidades")));
+        center.Controls.Add(HeaderButton("Ordens", 78, () => SelectReadingTabInWorkspace("Ordens")));
+        center.Controls.Add(HeaderButton("Backtest", 86, () => SelectBottomTab("Backtest")));
 
         var status = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Panel,
-            Padding = new Padding(10, 5, 10, 5),
+            Padding = new Padding(12, 8, 12, 8),
             RowCount = 2,
             ColumnCount = 2,
         };
-        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
-        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
-        status.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        status.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        status.Paint += (_, e) =>
-        {
-            using var pen = new Pen(TerminalTheme.Border);
-            e.Graphics.DrawRectangle(pen, 0, 0, status.Width - 1, status.Height - 1);
-        };
-        status.Controls.Add(StatusCaption("ROBO"), 0, 0);
-        status.Controls.Add(StatusCaption("DADOS"), 1, 0);
+        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36));
+        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 64));
+        status.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
+        status.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        status.Paint += (_, e) => DrawBorder(e.Graphics, status.ClientRectangle);
+        status.Controls.Add(StatusCaption("STATUS DO ROBO"), 0, 0);
+        status.Controls.Add(StatusCaption("SINCRONISMO MT5"), 1, 0);
         status.Controls.Add(_robotStatus, 0, 1);
         status.Controls.Add(_connection, 1, 1);
 
         header.Controls.Add(brand, 0, 0);
-        header.Controls.Add(quickMenu, 1, 0);
+        header.Controls.Add(center, 1, 0);
         header.Controls.Add(status, 2, 0);
         return header;
     }
-
     private ToolStripMenuItem BuildToolsMenu()
     {
         var menu = new ToolStripMenuItem("Ferramentas");
@@ -302,14 +294,14 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.PanelAlt,
-            Padding = new Padding(10, 8, 10, 7),
+            Padding = new Padding(14, 7, 14, 6),
             WrapContents = false,
         };
 
-        var refresh = Button("Atualizar dados", 112);
-        var latest = Button("Ir ao ultimo", 92);
-        var zoomIn = Button("+", 34);
-        var zoomOut = Button("-", 34);
+        var refresh = Button("Atualizar", 84);
+        var latest = Button("Ultimo", 70);
+        var zoomIn = Button("+", 32);
+        var zoomOut = Button("-", 32);
         refresh.Click += (_, _) => RequestMarketDataLoad(refreshSymbols: true);
         latest.Click += (_, _) => _chart.ResetViewToLatest();
         zoomIn.Click += (_, _) => _chart.ZoomIn();
@@ -330,13 +322,12 @@ public sealed class MainForm : Form
         };
         _rightMarginSpin.ValueChanged += (_, _) => _chart.RightMarginCandles = (int)_rightMarginSpin.Value;
 
-        toolbar.Controls.Add(ToolGroup("Mercado", Label("Ativo"), _symbolCombo, Label("TF"), _timeframeCombo, refresh));
+        toolbar.Controls.Add(ToolGroup("Ativo", _symbolCombo, Label("TF"), _timeframeCombo, refresh));
         toolbar.Controls.Add(ToolGroup("Grafico", Label("Zoom"), zoomOut, zoomIn, latest, Label("Margem"), _rightMarginSpin));
-        toolbar.Controls.Add(ToolGroup("Execucao", _robotButton));
-        toolbar.Controls.Add(ToolGroup("Paineis", HeaderButton("Leitura", 76, () => SelectReadingTabInWorkspace("Probabilidades")), HeaderButton("Eventos", 76, () => SelectReadingTabInWorkspace("Eventos")), HeaderButton("Simulacao", 86, () => SelectBottomTab("Simulacao"))));
+        toolbar.Controls.Add(ToolGroup("Robo", _robotButton));
+        toolbar.Controls.Add(ToolGroup("Modulos", HeaderButton("Leitura", 76, () => SelectReadingTabInWorkspace("Probabilidades")), HeaderButton("Eventos", 76, () => SelectReadingTabInWorkspace("Eventos")), HeaderButton("Simular", 76, () => SelectBottomTab("Simulacao"))));
         return toolbar;
     }
-
     private Control BuildWorkspace()
     {
         var main = new TableLayoutPanel
@@ -346,9 +337,9 @@ public sealed class MainForm : Form
             ColumnCount = 3,
             RowCount = 2,
         };
-        _leftDockColumn = new ColumnStyle(SizeType.Absolute, 260);
+        _leftDockColumn = new ColumnStyle(SizeType.Absolute, 310);
         _rightDockColumn = new ColumnStyle(SizeType.Absolute, 0);
-        _bottomDockRow = new RowStyle(SizeType.Absolute, 230);
+        _bottomDockRow = new RowStyle(SizeType.Absolute, 260);
         main.ColumnStyles.Add(_leftDockColumn);
         main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         main.ColumnStyles.Add(_rightDockColumn);
@@ -369,17 +360,87 @@ public sealed class MainForm : Form
 
     private Control BuildChartArea()
     {
-        var chartHost = new Panel
+        var dashboard = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Background,
-            Padding = new Padding(0),
+            Padding = new Padding(14),
+            RowCount = 2,
+            ColumnCount = 1,
         };
+        dashboard.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
+        dashboard.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        var metrics = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Background,
+            ColumnCount = 4,
+            RowCount = 1,
+        };
+        metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        metrics.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25));
+        metrics.Controls.Add(MetricCard("ATIVO", _symbolCombo.Text, "+ candles live"), 0, 0);
+        metrics.Controls.Add(MetricCard("TIMEFRAME", _timeframeCombo.Text, "MT5 sincronizado"), 1, 0);
+        metrics.Controls.Add(MetricCard("ORDENS", "1 por ativo", "limite operacional"), 2, 0);
+        metrics.Controls.Add(MetricCard("ROBO", "READY", "demo conectado"), 3, 0);
+
+        var chartShell = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Panel,
+            Padding = new Padding(10),
+        };
+        chartShell.Paint += (_, e) => DrawBorder(e.Graphics, chartShell.ClientRectangle);
         _chart.Dock = DockStyle.Fill;
-        chartHost.Controls.Add(_chart);
-        return chartHost;
+        chartShell.Controls.Add(_chart);
+
+        dashboard.Controls.Add(metrics, 0, 0);
+        dashboard.Controls.Add(chartShell, 0, 1);
+        return dashboard;
     }
 
+    private static Control MetricCard(string label, string value, string detail)
+    {
+        var card = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Panel,
+            Padding = new Padding(12, 8, 12, 8),
+            Margin = new Padding(0, 0, 10, 10),
+            RowCount = 3,
+            ColumnCount = 1,
+        };
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 18));
+        card.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        card.RowStyles.Add(new RowStyle(SizeType.Absolute, 18));
+        card.Paint += (_, e) => DrawBorder(e.Graphics, card.ClientRectangle);
+        card.Controls.Add(new Label
+        {
+            Text = label,
+            Dock = DockStyle.Fill,
+            ForeColor = TerminalTheme.Muted,
+            Font = new Font("Segoe UI", 7.75f, FontStyle.Bold),
+        }, 0, 0);
+        card.Controls.Add(new Label
+        {
+            Text = value,
+            Dock = DockStyle.Fill,
+            ForeColor = TerminalTheme.Text,
+            Font = new Font("Segoe UI Semibold", 15.5f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft,
+        }, 0, 1);
+        card.Controls.Add(new Label
+        {
+            Text = detail,
+            Dock = DockStyle.Fill,
+            ForeColor = TerminalTheme.Positive,
+            Font = new Font("Segoe UI", 8f),
+        }, 0, 2);
+        return card;
+    }
     private Control BuildNavigatorPanel()
     {
         var panel = PanelWithHeader("Workspace", "Ativos, leituras e ferramentas", out var content, () => SetLeftDockVisible(false));
@@ -619,8 +680,8 @@ public sealed class MainForm : Form
         Text = text,
         AutoSize = true,
         ForeColor = TerminalTheme.Muted,
-        Font = new Font("Segoe UI", 8.75f, FontStyle.Bold),
-        Padding = new Padding(8, 7, 3, 0),
+        Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+        Padding = new Padding(6, 7, 2, 0),
     };
 
     private static Label StatusCaption(string text) => new()
@@ -628,7 +689,7 @@ public sealed class MainForm : Form
         Text = text,
         Dock = DockStyle.Fill,
         ForeColor = TerminalTheme.Muted,
-        Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+        Font = new Font("Segoe UI", 7.25f, FontStyle.Bold),
         TextAlign = ContentAlignment.BottomLeft,
     };
 
@@ -638,12 +699,12 @@ public sealed class MainForm : Form
         {
             Text = text,
             Width = width,
-            Height = 30,
+            Height = 28,
             FlatStyle = FlatStyle.Flat,
             BackColor = TerminalTheme.PanelSoft,
             ForeColor = TerminalTheme.Text,
-            Font = new Font("Segoe UI", 8.75f, FontStyle.Bold),
-            Margin = new Padding(4, 2, 4, 2),
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Margin = new Padding(3, 1, 3, 1),
         };
         button.FlatAppearance.BorderColor = TerminalTheme.Border;
         button.FlatAppearance.MouseOverBackColor = TerminalTheme.PrimarySoft;
@@ -664,17 +725,13 @@ public sealed class MainForm : Form
         var group = new FlowLayoutPanel
         {
             AutoSize = true,
-            Height = 34,
+            Height = 32,
             BackColor = TerminalTheme.Panel,
-            Padding = new Padding(8, 2, 8, 2),
+            Padding = new Padding(8, 1, 8, 1),
             Margin = new Padding(0, 0, 8, 0),
             WrapContents = false,
         };
-        group.Paint += (_, e) =>
-        {
-            using var pen = new Pen(TerminalTheme.Border);
-            e.Graphics.DrawRectangle(pen, 0, 0, group.Width - 1, group.Height - 1);
-        };
+        group.Paint += (_, e) => DrawBorder(e.Graphics, group.ClientRectangle);
         group.Controls.Add(new Label
         {
             Text = title,
@@ -692,6 +749,15 @@ public sealed class MainForm : Form
         return group;
     }
 
+    private static void DrawBorder(Graphics graphics, Rectangle bounds)
+    {
+        if (bounds.Width <= 1 || bounds.Height <= 1)
+        {
+            return;
+        }
+        using var pen = new Pen(TerminalTheme.Border);
+        graphics.DrawRectangle(pen, bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+    }
     private void ConfigureNavigator()
     {
         _navigator.Nodes.Clear();
@@ -770,7 +836,7 @@ public sealed class MainForm : Form
         }
         if (_leftDockColumn is not null)
         {
-            _leftDockColumn.Width = visible ? 260 : 0;
+            _leftDockColumn.Width = visible ? 310 : 0;
         }
     }
 
@@ -793,7 +859,7 @@ public sealed class MainForm : Form
         }
         if (_bottomDockRow is not null)
         {
-            _bottomDockRow.Height = visible ? 230 : 0;
+            _bottomDockRow.Height = visible ? 260 : 0;
         }
     }
 
@@ -1491,3 +1557,4 @@ public sealed class MainForm : Form
         return Directory.GetCurrentDirectory();
     }
 }
+

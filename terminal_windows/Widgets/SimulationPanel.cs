@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 using FusionTerminalWindows.Models;
 using FusionTerminalWindows.Theme;
@@ -7,14 +7,14 @@ namespace FusionTerminalWindows.Widgets;
 
 public sealed class SimulationPanel : UserControl
 {
-    private const int ComboWidth = 132;
-    private const int NumericWidth = 68;
-    private const int RowWidth = 210;
-    private const int RowHeight = 28;
-    private const int LabelWidth = 58;
-    private const int SliderLabelWidth = 58;
-    private const int CheckWidth = 68;
-    private const int BlockTitleWidth = 185;
+    private const int ComboWidth = 158;
+    private const int NumericWidth = 76;
+    private const int RowWidth = 260;
+    private const int RowHeight = 30;
+    private const int LabelWidth = 82;
+    private const int SliderLabelWidth = 82;
+    private const int CheckWidth = 82;
+    private const int BlockTitleWidth = 230;
     private readonly ComboBox _strategyCombo = Combo();
     private readonly ComboBox _sideCombo = Combo();
     private readonly ComboBox _unitCombo = Combo();
@@ -82,7 +82,7 @@ public sealed class SimulationPanel : UserControl
     private Control BuildOrderBlock()
     {
         var block = Block("Ordem");
-        AddComboRow(block, "Estrategia", _strategyCombo, new[] { "Cruzamento de medias", "Inside bar", "Breakout validado", "Fusion sinal" });
+        AddComboRow(block, "Estrategia", _strategyCombo, new[] { "Cruzamento", "Inside bar", "Breakout", "Fusion sinal" });
         AddComboRow(block, "Lado", _sideCombo, new[] { "Auto", "BUY", "SELL" });
         AddNumericRow(block, "Lote", _lotInput);
         return block;
@@ -259,7 +259,7 @@ public sealed class SimulationPanel : UserControl
     {
         return new TrackBar
         {
-            Width = 110,
+            Width = 138,
             Minimum = 1,
             Maximum = 10,
             Value = 5,
@@ -314,7 +314,7 @@ public sealed class SimulationPanel : UserControl
         return new Button
         {
             Text = text,
-            Width = 64,
+            Width = 70,
             Height = 26,
             FlatStyle = FlatStyle.Flat,
             BackColor = color,
@@ -333,3 +333,4 @@ public sealed class SimulationPanel : UserControl
         };
     }
 }
+
