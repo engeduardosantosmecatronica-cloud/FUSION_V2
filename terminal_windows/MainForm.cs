@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -33,6 +34,11 @@ public sealed class MainForm : Form
     private readonly TextBox _timeframeCombo = new() { Width = 76, Text = "M15" };
     private readonly NumericUpDown _rightMarginSpin = new() { Width = 58, Minimum = 0, Maximum = 120, Value = 18 };
     private readonly Label _connection = new() { AutoSize = true, ForeColor = TerminalTheme.Muted, Padding = new Padding(12, 6, 0, 0) };
+    private readonly Button _robotButton;
+    private readonly Label _robotStatus = new() { AutoSize = true, ForeColor = TerminalTheme.Muted, Padding = new Padding(8, 6, 0, 0), Text = "Robo: parado" };
+    private readonly string _repoRoot;
+    private Process? _fusionProcess;
+    private Process? _bridgeProcess;
     private readonly ToolStripStatusLabel _statusLeft = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
     private readonly ToolStripStatusLabel _statusRight = new() { TextAlign = ContentAlignment.MiddleRight };
     private readonly TreeView _navigator = new() { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None };
@@ -69,21 +75,23 @@ public sealed class MainForm : Form
         AutoScroll = false;
 
         Program.StartupTrace("MainForm base properties ok");
-        var root = FindRepoRoot(AppContext.BaseDirectory);
-        Program.StartupTrace("repo root=" + root);
+        _repoRoot = FindRepoRoot(AppContext.BaseDirectory);
+        Program.StartupTrace("repo root=" + _repoRoot);
         Program.StartupTrace("creating loaders/panels start");
-        _loader = new CsvCandleLoader(root);
-        _snapshotLoader = new TerminalSnapshotLoader(root);
-        _signalLoader = new SignalEventLoader(root);
-        _probabilityPanel = new ProbabilityPanel(root);
-        _technicalPanel = new TechnicalAnalysisPanel(root);
-        _operationalMatrixPanel = new OperationalMatrixPanel(root);
-        _backtestPanel = new BacktestPanel(root);
-        _signalsPanel = new EventTablePanel(root, EventTableMode.Signals);
-        _ordersPanel = new EventTablePanel(root, EventTableMode.Orders);
-        _layersPanel = new EventTablePanel(root, EventTableMode.Layers);
-        _eventsPanel = new EventTablePanel(root, EventTableMode.Events);
+        _loader = new CsvCandleLoader(_repoRoot);
+        _snapshotLoader = new TerminalSnapshotLoader(_repoRoot);
+        _signalLoader = new SignalEventLoader(_repoRoot);
+        _probabilityPanel = new ProbabilityPanel(_repoRoot);
+        _technicalPanel = new TechnicalAnalysisPanel(_repoRoot);
+        _operationalMatrixPanel = new OperationalMatrixPanel(_repoRoot);
+        _backtestPanel = new BacktestPanel(_repoRoot);
+        _signalsPanel = new EventTablePanel(_repoRoot, EventTableMode.Signals);
+        _ordersPanel = new EventTablePanel(_repoRoot, EventTableMode.Orders);
+        _layersPanel = new EventTablePanel(_repoRoot, EventTableMode.Layers);
+        _eventsPanel = new EventTablePanel(_repoRoot, EventTableMode.Events);
         Program.StartupTrace("creating loaders/panels ok");
+        _robotButton = Button("Ligar robo", 96);
+        _robotButton.Click += (_, _) => ToggleFusionRobot();
         _marketRefreshTimer.Tick += (_, _) => QueueMarketDataLoad(refreshSymbols: false);
         _simulationTimer.Tick += (_, _) =>
         {
@@ -129,6 +137,7 @@ public sealed class MainForm : Form
         Program.StartupTrace("InitializeMarketData start");
         _statusLeft.Text = "Carregando dados em segundo plano...";
         _connection.Text = "MT5/Fusion: ativo";
+        StartMt5BridgeIfAvailable();
         QueueMarketDataLoad(refreshSymbols: true);
         _marketRefreshTimer.Start();
         Program.StartupTrace("InitializeMarketData queued background load");
@@ -239,6 +248,8 @@ public sealed class MainForm : Form
         toolbar.Controls.Add(zoomOut);
         toolbar.Controls.Add(refresh);
         toolbar.Controls.Add(latest);
+        toolbar.Controls.Add(_robotButton);
+        toolbar.Controls.Add(_robotStatus);
         toolbar.Controls.Add(_connection);
         return toolbar;
     }
@@ -1054,6 +1065,188 @@ public sealed class MainForm : Form
             : "Sem dados";
     }
 
+
+    private void ToggleFusionRobot()
+    {
+        if (_fusionProcess is not null && !_fusionProcess.HasExited)
+        {
+            StopFusionRobot();
+            return;
+        }
+
+        StartFusionRobot();
+    }
+
+    private void StartFusionRobot()
+    {
+        var python = ResolvePythonPath();
+        var runFusion = Path.Combine(_repoRoot, "run_fusion.py");
+        if (!File.Exists(python) || !File.Exists(runFusion))
+        {
+            MessageBox.Show(
+                $"Nao foi possivel iniciar o robo.\n\nPython: {python}\nrun_fusion.py: {runFusion}",
+                "Fusion Robot",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+            return;
+        }
+
+        Directory.CreateDirectory(Path.Combine(_repoRoot, "logs"));
+        var logPath = Path.Combine(_repoRoot, "logs", "fusion_robot_from_terminal.log");
+        var errPath = Path.Combine(_repoRoot, "logs", "fusion_robot_from_terminal.err.log");
+
+        var info = new ProcessStartInfo
+        {
+            FileName = python,
+            WorkingDirectory = _repoRoot,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        info.ArgumentList.Add(runFusion);
+
+        try
+        {
+            var process = new Process { StartInfo = info, EnableRaisingEvents = true };
+            process.OutputDataReceived += (_, args) => AppendProcessLog(logPath, args.Data);
+            process.ErrorDataReceived += (_, args) => AppendProcessLog(errPath, args.Data);
+            process.Exited += (_, _) => BeginInvoke(() =>
+            {
+                _robotButton.Text = "Ligar robo";
+                _robotStatus.Text = $"Robo: encerrado ({process.ExitCode})";
+                _statusLeft.Text = "Fusion robo encerrado.";
+                _fusionProcess?.Dispose();
+                _fusionProcess = null;
+            });
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            _fusionProcess = process;
+            _robotButton.Text = "Parar robo";
+            _robotStatus.Text = $"Robo: rodando PID {process.Id}";
+            _statusLeft.Text = "Fusion robo iniciado pelo terminal.";
+        }
+        catch (Exception ex)
+        {
+            Program.StartupTrace("StartFusionRobot failed: " + ex);
+            MessageBox.Show(ex.ToString(), "Fusion Robot", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void StopFusionRobot()
+    {
+        try
+        {
+            if (_fusionProcess is not null && !_fusionProcess.HasExited)
+            {
+                _fusionProcess.Kill(entireProcessTree: true);
+                _fusionProcess.WaitForExit(3000);
+            }
+        }
+        catch (Exception ex)
+        {
+            Program.StartupTrace("StopFusionRobot failed: " + ex);
+        }
+        finally
+        {
+            _fusionProcess?.Dispose();
+            _fusionProcess = null;
+            _robotButton.Text = "Ligar robo";
+            _robotStatus.Text = "Robo: parado";
+            _statusLeft.Text = "Fusion robo parado pelo terminal.";
+        }
+    }
+
+    private void StartMt5BridgeIfAvailable()
+    {
+        if (_bridgeProcess is not null && !_bridgeProcess.HasExited)
+        {
+            return;
+        }
+
+        var python = ResolvePythonPath();
+        var script = Path.Combine(_repoRoot, "tools", "export_mt5_candles_for_terminal.py");
+        if (!File.Exists(python) || !File.Exists(script))
+        {
+            Program.StartupTrace("MT5 bridge not started: python/script missing");
+            return;
+        }
+
+        var info = new ProcessStartInfo
+        {
+            FileName = python,
+            WorkingDirectory = _repoRoot,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        info.ArgumentList.Add(script);
+        info.ArgumentList.Add("--timeframes");
+        info.ArgumentList.Add("M5,M15,M30,H1,H4,D1");
+        info.ArgumentList.Add("--bars");
+        info.ArgumentList.Add("200");
+        info.ArgumentList.Add("--interval");
+        info.ArgumentList.Add("1");
+
+        try
+        {
+            _bridgeProcess = Process.Start(info);
+            if (_bridgeProcess is not null)
+            {
+                Program.StartupTrace("MT5 bridge started pid=" + _bridgeProcess.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Program.StartupTrace("StartMt5BridgeIfAvailable failed: " + ex);
+        }
+    }
+
+    private string ResolvePythonPath()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(_repoRoot, ".venv", "Scripts", "python.exe"),
+            Path.Combine(_repoRoot, "venv", "Scripts", "python.exe"),
+        };
+        return candidates.FirstOrDefault(File.Exists) ?? candidates[0];
+    }
+
+    private static void AppendProcessLog(string path, string? line)
+    {
+        if (line is null)
+        {
+            return;
+        }
+
+        try
+        {
+            File.AppendAllText(path, line + Environment.NewLine);
+        }
+        catch
+        {
+        }
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        StopFusionRobot();
+        try
+        {
+            if (_bridgeProcess is not null && !_bridgeProcess.HasExited)
+            {
+                _bridgeProcess.Kill(entireProcessTree: true);
+            }
+            _bridgeProcess?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Program.StartupTrace("Stop bridge failed: " + ex);
+        }
+        base.OnFormClosing(e);
+    }
+
     private static string SnapshotAge(SnapshotResult snapshot)
     {
         if (!DateTime.TryParse(snapshot.GeneratedAt, out var generatedAt))
@@ -1126,7 +1319,8 @@ public sealed class MainForm : Form
         var dir = new DirectoryInfo(start);
         while (dir is not null)
         {
-            if (Directory.Exists(Path.Combine(dir.FullName, "data", "csv")))
+            if (File.Exists(Path.Combine(dir.FullName, "run_fusion.py"))
+                && Directory.Exists(Path.Combine(dir.FullName, "fusion")))
             {
                 return dir.FullName;
             }
