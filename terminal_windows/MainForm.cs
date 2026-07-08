@@ -60,6 +60,8 @@ public sealed class MainForm : Form
     private bool _suppressMarketTextEvents;
     private readonly Queue<Action> _moduleLoadQueue = new();
     private readonly System.Windows.Forms.Timer _moduleLoadTimer = new() { Interval = 150 };
+    private readonly System.Windows.Forms.Timer _marketLoadDebounceTimer = new() { Interval = 250 };
+    private bool _pendingMarketRefreshSymbols;
 
     public MainForm()
     {
@@ -99,6 +101,13 @@ public sealed class MainForm : Form
             _chart.StepSimulationPlayback();
         };
         _moduleLoadTimer.Tick += (_, _) => DrainModuleLoadQueue();
+        _marketLoadDebounceTimer.Tick += (_, _) =>
+        {
+            _marketLoadDebounceTimer.Stop();
+            var refreshSymbols = _pendingMarketRefreshSymbols;
+            _pendingMarketRefreshSymbols = false;
+            QueueMarketDataLoad(refreshSymbols);
+        };
         _chart.SignalSelected += (_, signal) => OpenSimulationFromSignal(signal);
         _backtestPanel.TradesApplied += (_, trades) => _chart.SetBacktestTrades(trades);
 
@@ -219,20 +228,22 @@ public sealed class MainForm : Form
         var latest = Button("Fim", 56);
         var zoomIn = Button("+", 34);
         var zoomOut = Button("-", 34);
-        refresh.Click += (_, _) => QueueMarketDataLoad(refreshSymbols: true);
+        refresh.Click += (_, _) => RequestMarketDataLoad(refreshSymbols: true);
         latest.Click += (_, _) => _chart.ResetViewToLatest();
         zoomIn.Click += (_, _) => _chart.ZoomIn();
         zoomOut.Click += (_, _) => _chart.ZoomOut();
         _timeframeCombo.TextChanged += (_, _) =>
         {
-            LoadSymbols();
-            LoadCandles();
+            if (!_suppressMarketTextEvents)
+            {
+                RequestMarketDataLoad(refreshSymbols: true);
+            }
         };
         _symbolCombo.TextChanged += (_, _) =>
         {
             if (!_suppressMarketTextEvents)
             {
-                QueueMarketDataLoad(refreshSymbols: false);
+                RequestMarketDataLoad(refreshSymbols: false);
             }
         };
         _rightMarginSpin.ValueChanged += (_, _) => _chart.RightMarginCandles = (int)_rightMarginSpin.Value;
@@ -793,10 +804,24 @@ public sealed class MainForm : Form
         bool ChartChanged
     );
 
+    private void RequestMarketDataLoad(bool refreshSymbols)
+    {
+        _pendingMarketRefreshSymbols = _pendingMarketRefreshSymbols || refreshSymbols;
+        _marketLoadDebounceTimer.Stop();
+        _marketLoadDebounceTimer.Start();
+    }
+
     private async void QueueMarketDataLoad(bool refreshSymbols)
     {
-        if (_isLoadingMarketData || IsDisposed)
+        if (IsDisposed)
         {
+            return;
+        }
+        if (_isLoadingMarketData)
+        {
+            _pendingMarketRefreshSymbols = _pendingMarketRefreshSymbols || refreshSymbols;
+            _marketLoadDebounceTimer.Stop();
+            _marketLoadDebounceTimer.Start();
             return;
         }
 
@@ -852,9 +877,9 @@ public sealed class MainForm : Form
 
         var chartChanged = !symbol.Equals(_lastChartSymbol, StringComparison.OrdinalIgnoreCase)
             || !timeframe.Equals(_lastChartTimeframe, StringComparison.OrdinalIgnoreCase);
-        var csvCandles = _loader.Load(symbol, timeframe, 2500);
+        var csvCandles = _loader.Load(symbol, timeframe, 900);
         var snapshot = _snapshotLoader.Load(symbol, timeframe);
-        var candles = MergeCandles(csvCandles, snapshot.Candles, 2500);
+        var candles = MergeCandles(csvCandles, snapshot.Candles, 900);
         return new MarketDataPayload(symbol, timeframe, symbols, candles, snapshot, chartChanged);
     }
 
@@ -1046,16 +1071,16 @@ public sealed class MainForm : Form
         _lastChartSymbol = symbol;
         _lastChartTimeframe = timeframe;
 
-        var csvCandles = _loader.Load(symbol, timeframe, 2500);
+        var csvCandles = _loader.Load(symbol, timeframe, 900);
         var snapshot = _snapshotLoader.Load(symbol, timeframe);
-        var candles = MergeCandles(csvCandles, snapshot.Candles, 2500);
+        var candles = MergeCandles(csvCandles, snapshot.Candles, 900);
         _chart.SetCandles(candles);
         if (chartChanged)
         {
             _chart.ResetPriceScale();
         }
         _backtestPanel.UpdateContext(symbol, timeframe);
-        RefreshAnalysisModules(symbol, timeframe);
+        QueueAnalysisModulesLoad(symbol, timeframe);
         _connection.Text = snapshot.Candles.Count > 0
             ? $"CSV historico + MT5 live | broker {snapshot.BrokerSymbol} | {SnapshotAge(snapshot)}"
             : "CSV historico | aguardando snapshot MT5";
