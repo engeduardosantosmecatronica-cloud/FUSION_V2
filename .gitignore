@@ -72,3 +72,5 @@ rustup-init.exe
 # Sistema/IDE
 .DS_Store
 Thumbs.db
+/image1.png
+/reports/project_inventory/terminal_visual_compare.jpg
