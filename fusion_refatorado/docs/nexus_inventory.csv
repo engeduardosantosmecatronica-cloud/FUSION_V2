@@ -1,0 +1,15 @@
+root,path,file_name,extension,bytes
+nexus,fusion_refatorado\models\nexus\alpha158_best.joblib,alpha158_best.joblib,.joblib,1980294
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\calendars\15min.txt,15min.txt,.txt,4421970
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\features\eurusd\close.15min.bin,close.15min.bin,.bin,842284
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\features\eurusd\high.15min.bin,high.15min.bin,.bin,842284
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\features\eurusd\low.15min.bin,low.15min.bin,.bin,842284
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\features\eurusd\open.15min.bin,open.15min.bin,.bin,842284
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\features\eurusd\volume.15min.bin,volume.15min.bin,.bin,842284
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\instruments\all.txt,all.txt,.txt,48
+nexus,fusion_refatorado\data\nexus\qlib_data_novo\instruments\eurusd.txt,eurusd.txt,.txt,47
+nexus,fusion_refatorado\data\nexus\raw\dados_summary.json,dados_summary.json,.json,1106
+nexus,fusion_refatorado\data\nexus\raw\EURUSD.csv,EURUSD.csv,.csv,18019035
+nexus,fusion_refatorado\data\nexus\raw\EURUSD_FUSION.parquet,EURUSD_FUSION.parquet,.parquet,39712715
+nexus,fusion_refatorado\data\nexus\raw\EURUSD_M15.parquet,EURUSD_M15.parquet,.parquet,12358663
+nexus,fusion_refatorado\data\nexus\raw\EURUSD_test.csv,EURUSD_test.csv,.csv,74459

@@ -1,0 +1,19 @@
+# qlib_config.yaml
+
+# Configuracao Qlib (Fase 2+)
+# Agora com modelo treinado - ativando gradualmente
+
+qlib:
+  enabled: true  # ATIVADO - modelo XGBoost disponvel
+  data_root: "data/qlib_bin"
+  calendars: "data/qlib_bin/calendars"
+  features_path: "data/qlib_bin/features"
+  
+  # Blending weight: 0.0 (100% V2) ate 1.0 (100% Qlib)
+  # Comecando com 5% Qlib para teste seguro
+  blend_weight: 0.05
+
+# Config dentro do strategy_settings.yaml tambem
+qlib_integration:
+  enabled: true
+  weight: 0.05  # 5% Qlib, 95% V2 (teste seguro)

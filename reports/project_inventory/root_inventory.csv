@@ -1,0 +1,36 @@
+name,kind,category,purpose,direct_files,direct_dirs,size_bytes_file_only,recommended_action
+.venv,dir,ambiente_dependencias,"ambiente local, IDE e dependencias instaladas",1,5,,separar_ou_referenciar
+.vscode,dir,ambiente_dependencias,"ambiente local, IDE e dependencias instaladas",2,0,,separar_ou_referenciar
+02_research,dir,dados_treinamento,"bases, parquet e features para treino/backtest",1,1,,separar_ou_referenciar
+_archive,dir,backups_legado,copias antigas ou versoes refatoradas nao usadas no runtime principal,1,4,,separar_ou_referenciar
+_external,dir,projetos_externos_integracoes,repos/projetos externos e integracoes isoladas,1,0,,separar_ou_referenciar
+config,dir,runtime_robo,necessario ou usado pelo Fusion em tempo real,6,0,,manter_na_raiz
+dashboard,dir,paineis_controle,"interfaces, terminais e bridges visuais",4,1,,separar_ou_referenciar
+data,dir,dados_treinamento,"bases, parquet e features para treino/backtest",0,3,,separar_ou_referenciar
+docs,dir,documentacao,documentos humanos e planos,15,1,,separar_ou_referenciar
+features,dir,dados_treinamento,"bases, parquet e features para treino/backtest",3,0,,separar_ou_referenciar
+frontend,dir,paineis_controle,"interfaces, terminais e bridges visuais",10,2,,separar_ou_referenciar
+fusion,dir,runtime_robo,necessario ou usado pelo Fusion em tempo real,8,13,,manter_na_raiz
+fusion-frontend,dir,paineis_controle,"interfaces, terminais e bridges visuais",12,5,,separar_ou_referenciar
+fusion_refatorado,dir,runtime_robo,necessario ou usado pelo Fusion em tempo real,1,7,,manter_na_raiz
+logs,dir,runtime_robo,necessario ou usado pelo Fusion em tempo real,127,9,,manter_na_raiz
+models,dir,modelos,artefatos de modelos treinados ou candidatos,1,24,,separar_ou_referenciar
+models_experts,dir,modelos,artefatos de modelos treinados ou candidatos,0,18,,separar_ou_referenciar
+models_experts_v2,dir,modelos,artefatos de modelos treinados ou candidatos,0,46,,separar_ou_referenciar
+models_expr,dir,modelos,artefatos de modelos treinados ou candidatos,1,23,,separar_ou_referenciar
+models_principal,dir,modelos,artefatos de modelos treinados ou candidatos,1,31,,separar_ou_referenciar
+models_research,dir,modelos,artefatos de modelos treinados ou candidatos,0,46,,separar_ou_referenciar
+mql5,dir,runtime_robo,necessario ou usado pelo Fusion em tempo real,0,2,,manter_na_raiz
+node_modules,dir,ambiente_dependencias,"ambiente local, IDE e dependencias instaladas",1,2,,separar_ou_referenciar
+package-lock.json,file,ambiente_dependencias,"ambiente local, IDE e dependencias instaladas",,,858,separar_ou_referenciar
+package.json,file,ambiente_dependencias,"ambiente local, IDE e dependencias instaladas",,,63,separar_ou_referenciar
+README.md,file,documentacao,documentos humanos e planos,,,18251,separar_ou_referenciar
+reports,dir,analises_relatorios,"saidas analiticas, auditorias, CSVs, markdowns e prints",3,51,,separar_ou_referenciar
+requirements.txt,file,runtime_entrypoints,entrada e dependencias para executar o robo,,,161,manter_na_raiz
+run_fusion.py,file,runtime_entrypoints,entrada e dependencias para executar o robo,,,310,manter_na_raiz
+runtime,dir,runtime_robo,necessario ou usado pelo Fusion em tempo real,37,2,,manter_na_raiz
+rustup-init.exe,file,ambiente_dependencias,"ambiente local, IDE e dependencias instaladas",,,12814336,separar_ou_referenciar
+terminal_desktop,dir,paineis_controle,"interfaces, terminais e bridges visuais",2,1,,separar_ou_referenciar
+terminal_qt,dir,paineis_controle,"interfaces, terminais e bridges visuais",12,1,,separar_ou_referenciar
+terminal_windows,dir,paineis_controle,"interfaces, terminais e bridges visuais",5,8,,separar_ou_referenciar
+tools,dir,ferramentas,"scripts utilitarios; misturam runtime, treino, analise e manutencao",89,2,,separar_ou_referenciar

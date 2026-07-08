@@ -1,0 +1,91 @@
+# Signal Inversion Check
+
+- Horizonte analisado: H3
+- Agrupamento: symbol, timeframe
+
+- Grupos analisados: 94
+- Suspeitos/provavel inversao: 47
+- Direcao OK: 34
+
+## Suspeitos
+
+- AUDJPY H4 | amostras=240 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- USDJPY H4 | amostras=175 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- AUDCHF H4 | amostras=87 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- AUDSGD M30 | amostras=79 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- GBPAUD H4 | amostras=45 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- GOLD H4 | amostras=227 | direto=2.64% | invertido=97.36% | delta=94.71% | provavel_inversao
+- EURJPY H4 | amostras=206 | direto=3.88% | invertido=96.12% | delta=92.23% | provavel_inversao
+- CADJPY M15 | amostras=77 | direto=5.19% | invertido=94.81% | delta=89.61% | provavel_inversao
+- AUDNZD M30 | amostras=135 | direto=6.67% | invertido=93.33% | delta=86.67% | provavel_inversao
+- GOLD M5 | amostras=69 | direto=8.70% | invertido=91.30% | delta=82.61% | provavel_inversao
+- AUDUSD H4 | amostras=111 | direto=9.01% | invertido=90.99% | delta=81.98% | provavel_inversao
+- USDCAD H4 | amostras=111 | direto=9.01% | invertido=90.99% | delta=81.98% | provavel_inversao
+- NZDUSD M15 | amostras=33 | direto=9.09% | invertido=90.91% | delta=81.82% | provavel_inversao
+- USDJPY H1 | amostras=192 | direto=13.02% | invertido=86.98% | delta=73.96% | provavel_inversao
+- USDCAD H1 | amostras=80 | direto=15.00% | invertido=85.00% | delta=70.00% | provavel_inversao
+- NZDSGD M30 | amostras=54 | direto=16.67% | invertido=83.33% | delta=66.67% | provavel_inversao
+- NZDJPY H1 | amostras=36 | direto=16.67% | invertido=83.33% | delta=66.67% | provavel_inversao
+- CADJPY M30 | amostras=134 | direto=17.16% | invertido=82.84% | delta=65.67% | provavel_inversao
+- NZDJPY M30 | amostras=116 | direto=17.24% | invertido=82.76% | delta=65.52% | provavel_inversao
+- AUDCAD H1 | amostras=311 | direto=17.36% | invertido=82.64% | delta=65.27% | provavel_inversao
+- EURJPY H1 | amostras=197 | direto=18.78% | invertido=81.22% | delta=62.44% | provavel_inversao
+- AUDJPY M30 | amostras=340 | direto=20.00% | invertido=80.00% | delta=60.00% | provavel_inversao
+- AUDNZD H1 | amostras=105 | direto=20.00% | invertido=80.00% | delta=60.00% | provavel_inversao
+- EURGBP H1 | amostras=139 | direto=20.86% | invertido=79.14% | delta=58.27% | provavel_inversao
+- GBPJPY H1 | amostras=279 | direto=23.30% | invertido=76.70% | delta=53.41% | provavel_inversao
+- AUDSGD H1 | amostras=47 | direto=23.40% | invertido=76.60% | delta=53.19% | provavel_inversao
+- NZDSGD H4 | amostras=101 | direto=23.76% | invertido=76.24% | delta=52.48% | provavel_inversao
+- EURCHF M30 | amostras=249 | direto=24.50% | invertido=75.50% | delta=51.00% | provavel_inversao
+- AUDCAD M15 | amostras=166 | direto=24.70% | invertido=75.30% | delta=50.60% | provavel_inversao
+- CHFJPY H1 | amostras=316 | direto=25.32% | invertido=74.68% | delta=49.37% | provavel_inversao
+- EURUSD M30 | amostras=122 | direto=25.41% | invertido=74.59% | delta=49.18% | provavel_inversao
+- CHFJPY M15 | amostras=127 | direto=26.77% | invertido=73.23% | delta=46.46% | provavel_inversao
+- CHFJPY M30 | amostras=48 | direto=29.17% | invertido=70.83% | delta=41.67% | provavel_inversao
+- GBPNZD M30 | amostras=41 | direto=29.27% | invertido=70.73% | delta=41.46% | provavel_inversao
+- AUDUSD M30 | amostras=341 | direto=29.91% | invertido=70.09% | delta=40.18% | provavel_inversao
+- EURCAD M30 | amostras=46 | direto=30.43% | invertido=69.57% | delta=39.13% | provavel_inversao
+- GBPCHF M30 | amostras=32 | direto=31.25% | invertido=68.75% | delta=37.50% | provavel_inversao
+- AUDUSD H1 | amostras=307 | direto=35.18% | invertido=64.82% | delta=29.64% | provavel_inversao
+- CADJPY H1 | amostras=85 | direto=35.29% | invertido=64.71% | delta=29.41% | provavel_inversao
+- NZDUSD M30 | amostras=103 | direto=36.89% | invertido=63.11% | delta=26.21% | provavel_inversao
+- GBPJPY M30 | amostras=56 | direto=39.29% | invertido=60.71% | delta=21.43% | provavel_inversao
+- AUDSGD H4 | amostras=162 | direto=39.51% | invertido=60.49% | delta=20.99% | provavel_inversao
+- GBPAUD H1 | amostras=57 | direto=40.35% | invertido=59.65% | delta=19.30% | suspeito
+- USDCHF H1 | amostras=32 | direto=40.62% | invertido=59.38% | delta=18.75% | suspeito
+- AUDSEK H1 | amostras=37 | direto=43.24% | invertido=56.76% | delta=13.51% | suspeito
+- USDCAD M30 | amostras=159 | direto=44.03% | invertido=55.97% | delta=11.95% | suspeito
+- AUDJPY H1 | amostras=110 | direto=44.55% | invertido=55.45% | delta=10.91% | suspeito
+
+## Direcao OK
+
+- NZDSGD H1 | amostras=39 | direto=100.00% | invertido=0.00%
+- EURNZD H4 | amostras=44 | direto=100.00% | invertido=0.00%
+- CADCHF H4 | amostras=83 | direto=100.00% | invertido=0.00%
+- NZDUSD H4 | amostras=111 | direto=100.00% | invertido=0.00%
+- EURUSD H4 | amostras=180 | direto=100.00% | invertido=0.00%
+- AUDNZD H4 | amostras=240 | direto=100.00% | invertido=0.00%
+- EURGBP H4 | amostras=224 | direto=99.55% | invertido=0.45%
+- NZDJPY M15 | amostras=76 | direto=98.68% | invertido=1.32%
+- EURCHF M15 | amostras=31 | direto=93.55% | invertido=6.45%
+- CADCHF M30 | amostras=181 | direto=87.85% | invertido=12.15%
+- GBPUSD M30 | amostras=232 | direto=87.07% | invertido=12.93%
+- AUDCHF M30 | amostras=32 | direto=84.38% | invertido=15.62%
+- AUDCAD M30 | amostras=463 | direto=82.07% | invertido=17.93%
+- NZDCHF H1 | amostras=37 | direto=81.08% | invertido=18.92%
+- AUDCAD H4 | amostras=89 | direto=80.90% | invertido=19.10%
+- EURNZD H1 | amostras=51 | direto=78.43% | invertido=21.57%
+- GOLD M15 | amostras=82 | direto=76.83% | invertido=23.17%
+- GOLD M30 | amostras=139 | direto=75.54% | invertido=24.46%
+- EURCHF H4 | amostras=282 | direto=72.70% | invertido=27.30%
+- AUDNOK H1 | amostras=36 | direto=72.22% | invertido=27.78%
+- USDCHF M30 | amostras=211 | direto=71.56% | invertido=28.44%
+- EURUSD M15 | amostras=146 | direto=69.18% | invertido=30.82%
+- GBPNZD H1 | amostras=42 | direto=69.05% | invertido=30.95%
+- AUDCHF H1 | amostras=103 | direto=68.93% | invertido=31.07%
+- CADCHF H1 | amostras=98 | direto=65.31% | invertido=34.69%
+- USDJPY M30 | amostras=91 | direto=63.74% | invertido=36.26%
+- GOLD H1 | amostras=163 | direto=63.19% | invertido=36.81%
+- GBPUSD H4 | amostras=179 | direto=58.66% | invertido=41.34%
+- EURJPY M30 | amostras=311 | direto=58.20% | invertido=41.80%
+- EURUSD H1 | amostras=167 | direto=58.08% | invertido=41.92%

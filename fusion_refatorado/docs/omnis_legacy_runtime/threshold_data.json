@@ -1,0 +1,11 @@
+{
+  "statistics": {
+    "n_bars": 100,
+    "z_factor": 1.0
+  },
+  "thresholds": {
+    "buy": 0.3,
+    "sell": -0.1
+  },
+  "timestamp": 1776965770508
+}

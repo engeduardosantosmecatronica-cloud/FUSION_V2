@@ -1,0 +1,512 @@
+{
+  "enabled": true,
+  "date": "2026-07-08",
+  "valid_until": "2026-07-08T23:59:00-03:00",
+  "generated_at": "2026-07-08T12:53:33-03:00",
+  "summary": "Briefing atualizado para 08/07/2026. O regime do dia e de risco elevado: nova escalada entre EUA e Ira provocou salto forte do petroleo, queda de bolsas globais e alta de yields, reforcando pressao inflacionaria e mantendo o mercado sensivel ao tom hawkish do Fed. O USD segue estruturalmente apoiado por posicionamento comprado elevado e expectativa de juros altos, mas o intraday dos principais pares contra USD esta misto e exige confirmacao tecnica. USDJPY permanece em zona extrema acima de 162 no feed MT5, mantendo risco alto de intervencao japonesa e reversoes bruscas em crosses de JPY. BTCUSD esta sincronizado e opera abaixo de 63k, com sentimento cauteloso. GOLD e ETHUSD continuam com payload stale no feed MT5 e nao devem ser usados como confirmacao operacional ate o feed desses ativos voltar a atualizar.",
+  "risk_regime": "geopolitical_energy_shock_usd_firm_jpy_intervention_watch_risk_off",
+  "notes": [
+    "Atualizado em 08/07/2026 as 12:53:33 -03 usando snapshots vivos do MT5 para FX e BTCUSD.",
+    "Regime macro do dia: petroleo e gas subiram forte apos nova escalada EUA-Ira; bolsas globais recuaram e yields subiram.",
+    "Choque de energia aumenta risco inflacionario e reduz apetite por risco, favorecendo gestao defensiva de exposicao.",
+    "Fed manteve juros em 3.50%-3.75% em 17/06/2026 e sinalizou possibilidade de alta antes do fim do ano; mercado aguarda/absorve ata da reuniao.",
+    "Posicionamento comprado em USD segue elevado; MarketWatch reportou net long em dolar no maior nivel em pelo menos dez anos, com JPY vendido em nivel relevante.",
+    "USDJPY opera acima de 162 no MT5; manter alerta maximo para intervencao japonesa, gaps e reversoes violentas nos crosses de JPY.",
+    "FX M15 atual: AUDUSD e NZDUSD com leve alta, EURUSD/GBPUSD praticamente estaveis, USDCAD levemente mais fraco, USDCHF levemente mais forte.",
+    "BTCUSD esta sincronizado no feed MT5 e abaixo de 63k; sentimento cripto segue cauteloso apos breve tentativa de rally.",
+    "GOLD e ETHUSD estao com candles antigos no feed MT5; reduzir peso desses ativos no briefing ate o bridge confirmar candles recentes."
+  ],
+  "sources": [
+    {
+      "label": "Guardian markets live - oil/gas jump, stocks slide, yields rise after US-Iran escalation",
+      "url": "https://www.theguardian.com/business/live/2026/jul/08/oil-prices-rise-fresh-us-strikes-iran-return-sanctions-tehran-federal-reserve-minutes-live-updates"
+    },
+    {
+      "label": "MarketWatch - dollar positioning and JPY intervention watch",
+      "url": "https://www.marketwatch.com/livecoverage/stock-market-today-dow-53000-first-time-s-p-500-nasdaq-tech-stocks/card/bets-on-stronger-dollar-hit-decade-high-as-traders-expect-rate-rises-JAFDQ4RY8i8Keh97URg8"
+    },
+    {
+      "label": "Economic Times - Bitcoin below 63k, cautious crypto sentiment",
+      "url": "https://m.economictimes.com/markets/cryptocurrency/bitcoin-slips-below-63k-after-a-brief-rally-as-investors-stay-cautious-avoid-aggressive-bets-on-altcoins/articleshow/132255683.cms"
+    },
+    {
+      "label": "Guardian - Fed held rates at 3.50%-3.75% on 2026-06-17",
+      "url": "https://www.theguardian.com/business/2026/jun/17/federal-reserve-interest-rates"
+    },
+    {
+      "label": "MarketWatch - gold weak as oil and yields rise",
+      "url": "https://www.marketwatch.com/livecoverage/stock-market-today-dow-s-p-500-nasdaq-oil-prices-us-iran-exchange-strikes/card/gold-falls-it-s-a-familiar-trend-in-the-iran-war--QWkoAsOKllObS7TkvjpB"
+    }
+  ],
+  "market_snapshot": {
+    "DXY": {
+      "level": 97.4,
+      "bias": "bullish_usd",
+      "source": "positioning_proxy_marketwatch_wsj_recent",
+      "note": "Sem DXY live no MT5; proxy mantido por posicionamento USD forte e WSJ Dollar Index recente."
+    },
+    "EURUSD": {
+      "last": 1.1413,
+      "m15_change_pct": -0.007,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:05",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "GBPUSD": {
+      "last": 1.33527,
+      "m15_change_pct": -0.0007,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:06",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "USDJPY": {
+      "last": 162.34,
+      "m15_change_pct": 0.0,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:03",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "AUDUSD": {
+      "last": 0.69404,
+      "m15_change_pct": 0.0159,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:04",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "NZDUSD": {
+      "last": 0.57109,
+      "m15_change_pct": 0.007,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:03",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "USDCAD": {
+      "last": 1.41882,
+      "m15_change_pct": -0.0063,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:06",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "USDCHF": {
+      "last": 0.8084,
+      "m15_change_pct": 0.0124,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:03",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "GOLD": {
+      "last": 4039.0,
+      "m15_change_pct": 0.0,
+      "source": "EXTERNAL_INDICATIVE_MARKETWATCH_MT5_STALE",
+      "generated_at": "2026-07-08T15:37:28Z",
+      "stale": true,
+      "mt5_last": 4465.24,
+      "mt5_generated_at": "2026-06-04T22:07:07",
+      "note": "MT5 stale; valor externo apenas indicativo, nao usar para ordem."
+    },
+    "BTCUSD": {
+      "last": 62793.48,
+      "m15_change_pct": 0.0344,
+      "source": "MT5",
+      "generated_at": "2026-07-08T02:22:04",
+      "last_time": "2026-07-08 05:15:00"
+    },
+    "ETHUSD": {
+      "last": 2055.55,
+      "m15_change_pct": 0.0,
+      "source": "MT5_STALE",
+      "generated_at": "2026-05-27T11:54:36",
+      "last_time": "2026-05-27 14:45:00",
+      "stale": true
+    }
+  },
+  "currency_bias": {
+    "USD": {
+      "bias": "bullish",
+      "strength": 0.66,
+      "drivers": [
+        "fed_higher_for_longer",
+        "possible_2026_rate_hike",
+        "dollar_positioning_decade_high",
+        "risk_off_demand",
+        "energy_shock_inflation_risk"
+      ]
+    },
+    "EUR": {
+      "bias": "neutral_bearish",
+      "strength": 0.46,
+      "drivers": [
+        "risk_off_europe_equities",
+        "higher_energy_costs",
+        "usd_strength",
+        "eurusd_flat_to_soft_m15"
+      ]
+    },
+    "GBP": {
+      "bias": "neutral_bearish",
+      "strength": 0.48,
+      "drivers": [
+        "risk_off_global",
+        "usd_headwind",
+        "gbpusd_flat_m15"
+      ]
+    },
+    "JPY": {
+      "bias": "bearish",
+      "strength": 0.78,
+      "drivers": [
+        "carry_trade_pressure",
+        "wide_rate_differential",
+        "usdjpy_above_162",
+        "intervention_risk_extreme",
+        "yen_short_positioning"
+      ]
+    },
+    "CHF": {
+      "bias": "neutral",
+      "strength": 0.50,
+      "drivers": [
+        "safe_haven_support",
+        "usd_strength_offset",
+        "usdchf_slightly_higher_m15"
+      ]
+    },
+    "AUD": {
+      "bias": "neutral_bearish",
+      "strength": 0.48,
+      "drivers": [
+        "risk_sensitive_currency",
+        "china_asia_equity_pressure",
+        "small_audusd_m15_rebound",
+        "usd_headwind"
+      ]
+    },
+    "NZD": {
+      "bias": "neutral_bearish",
+      "strength": 0.47,
+      "drivers": [
+        "risk_sensitive_currency",
+        "small_nzdusd_m15_rebound",
+        "usd_headwind"
+      ]
+    },
+    "CAD": {
+      "bias": "neutral_bullish",
+      "strength": 0.53,
+      "drivers": [
+        "oil_price_surge_support",
+        "usdcad_m15_slightly_lower",
+        "risk_off_limits_cad_upside"
+      ]
+    }
+  },
+  "pair_bias": {
+    "AUDCAD": {
+      "bias": "SELL",
+      "strength": 0.55
+    },
+    "AUDCHF": {
+      "bias": "neutral_sell",
+      "strength": 0.52
+    },
+    "AUDJPY": {
+      "bias": "BUY",
+      "strength": 0.56
+    },
+    "AUDNZD": {
+      "bias": "neutral",
+      "strength": 0.50
+    },
+    "AUDUSD": {
+      "bias": "SELL",
+      "strength": 0.57
+    },
+    "EURAUD": {
+      "bias": "neutral",
+      "strength": 0.50
+    },
+    "EURCAD": {
+      "bias": "SELL",
+      "strength": 0.56
+    },
+    "EURCHF": {
+      "bias": "neutral_sell",
+      "strength": 0.52
+    },
+    "EURJPY": {
+      "bias": "BUY",
+      "strength": 0.58
+    },
+    "EURNZD": {
+      "bias": "neutral",
+      "strength": 0.51
+    },
+    "EURUSD": {
+      "bias": "SELL",
+      "strength": 0.61
+    },
+    "GBPAUD": {
+      "bias": "neutral_buy",
+      "strength": 0.52
+    },
+    "GBPJPY": {
+      "bias": "BUY",
+      "strength": 0.59
+    },
+    "GBPUSD": {
+      "bias": "SELL",
+      "strength": 0.58
+    },
+    "NZDJPY": {
+      "bias": "BUY",
+      "strength": 0.55
+    },
+    "NZDUSD": {
+      "bias": "SELL",
+      "strength": 0.58
+    },
+    "USDCAD": {
+      "bias": "neutral_buy",
+      "strength": 0.53
+    },
+    "USDCHF": {
+      "bias": "BUY",
+      "strength": 0.57
+    },
+    "USDJPY": {
+      "bias": "BUY",
+      "strength": 0.67
+    }
+  },
+  "asset_bias": {
+    "GOLD": {
+      "bias": "neutral_bearish",
+      "strength": 0.42,
+      "drivers": [
+        "mt5_feed_stale",
+        "external_gold_weakness",
+        "higher_oil_and_yields",
+        "do_not_use_as_primary_confirmation"
+      ]
+    },
+    "BTCUSD": {
+      "bias": "neutral_bearish",
+      "strength": 0.48,
+      "drivers": [
+        "mt5_feed_current",
+        "below_63k_area",
+        "cautious_crypto_sentiment",
+        "risk_off_global",
+        "small_positive_m15_bounce"
+      ]
+    },
+    "ETHUSD": {
+      "bias": "neutral",
+      "strength": 0.35,
+      "drivers": [
+        "feed_stale",
+        "do_not_use_as_primary_confirmation",
+        "altcoin_risk_avoidance"
+      ]
+    },
+    "AUS200": {
+      "bias": "neutral_bearish",
+      "strength": 0.45,
+      "drivers": [
+        "risk_off_global_equities",
+        "energy_shock",
+        "asia_equity_pressure"
+      ]
+    }
+  },
+  "data_quality": {
+    "mt5_bridge_status": "running",
+    "live_symbols": [
+      "AUDUSD",
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
+      "NZDUSD",
+      "USDCAD",
+      "USDCHF",
+      "BTCUSD"
+    ],
+    "stale_symbols": [
+      "GOLD",
+      "ETHUSD"
+    ],
+    "external_context_symbols": [
+      "DXY",
+      "GOLD"
+    ],
+    "warning": "Briefing pode apoiar FX e BTCUSD; reduzir peso de GOLD/ETHUSD ate os candles desses simbolos atualizarem no MT5."
+  },
+  "rules": [
+    {
+      "label": "geopolitical_energy_shock_reduce_risk",
+      "symbols": [
+        "AUDUSD",
+        "NZDUSD",
+        "EURUSD",
+        "GBPUSD",
+        "BTCUSD",
+        "ETHUSD",
+        "GOLD",
+        "AUS200"
+      ],
+      "timeframes": [
+        "M5",
+        "M15",
+        "M30",
+        "H1",
+        "H4"
+      ],
+      "risk": "ALTO",
+      "action": "reduce_exposure",
+      "reasons": [
+        "us_iran_escalation",
+        "oil_price_jump",
+        "risk_off",
+        "higher_yields"
+      ]
+    },
+    {
+      "label": "usd_strength_sell_major_rallies",
+      "symbols": [
+        "EURUSD",
+        "GBPUSD",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "timeframes": [
+        "M5",
+        "M15",
+        "M30",
+        "H1"
+      ],
+      "risk": "MEDIO",
+      "action": "prefer_sell_rallies",
+      "reasons": [
+        "usd_strength",
+        "fed_higher_for_longer",
+        "dollar_positioning",
+        "energy_inflation_risk"
+      ]
+    },
+    {
+      "label": "jpy_carry_intervention_watch",
+      "symbols": [
+        "USDJPY",
+        "EURJPY",
+        "GBPJPY",
+        "AUDJPY",
+        "NZDJPY"
+      ],
+      "timeframes": [
+        "M5",
+        "M15",
+        "M30",
+        "H1",
+        "H4"
+      ],
+      "risk": "ALTO",
+      "action": "moderate",
+      "reasons": [
+        "jpy_weakness",
+        "carry_trade",
+        "intervention_risk",
+        "usdjpy_above_162",
+        "yen_short_positioning"
+      ]
+    },
+    {
+      "label": "cad_oil_support_watch",
+      "symbols": [
+        "USDCAD",
+        "AUDCAD",
+        "EURCAD"
+      ],
+      "timeframes": [
+        "M15",
+        "M30",
+        "H1",
+        "H4"
+      ],
+      "risk": "MEDIO",
+      "action": "prefer_cad_strength_confirmation",
+      "reasons": [
+        "oil_price_surge",
+        "cad_support",
+        "geopolitical_energy_premium"
+      ]
+    },
+    {
+      "label": "gold_feed_stale_do_not_confirm",
+      "symbols": [
+        "GOLD",
+        "XAUUSD"
+      ],
+      "timeframes": [
+        "M5",
+        "M15",
+        "M30",
+        "H1",
+        "H4"
+      ],
+      "risk": "ALTO",
+      "action": "reduce_exposure",
+      "reasons": [
+        "mt5_feed_stale",
+        "external_gold_weakness",
+        "higher_yields",
+        "unreliable_snapshot"
+      ]
+    },
+    {
+      "label": "crypto_caution_btc_below_63k",
+      "symbols": [
+        "BTCUSD",
+        "ETHUSD"
+      ],
+      "timeframes": [
+        "M5",
+        "M15",
+        "M30",
+        "H1",
+        "H4"
+      ],
+      "risk": "ALTO",
+      "action": "reduce_exposure",
+      "reasons": [
+        "risk_off",
+        "btc_below_63k",
+        "altcoin_caution",
+        "eth_feed_stale"
+      ]
+    },
+    {
+      "label": "usd_dominant_macro",
+      "symbols": [
+        "EURUSD",
+        "GBPUSD",
+        "AUDUSD",
+        "NZDUSD",
+        "USDCHF",
+        "USDCAD"
+      ],
+      "timeframes": [
+        "M15",
+        "M30",
+        "H1",
+        "H4"
+      ],
+      "risk": "MEDIO",
+      "action": "follow_usd_trend",
+      "reasons": [
+        "fed_higher_for_longer",
+        "stronger_dollar_positioning",
+        "energy_inflation_risk"
+      ]
+    }
+  ]
+}

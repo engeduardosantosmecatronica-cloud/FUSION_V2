@@ -1,0 +1,204 @@
+name,path,currency_base,description
+AUDUSD,Markets\Forex\Majors\AUDUSD,AUD,Australian Dollar vs US Dollar
+EURUSD,Markets\Forex\Majors\EURUSD,EUR,Euro vs US Dollar
+GBPUSD,Markets\Forex\Majors\GBPUSD,GBP,Great Britain Pound vs US Dollar
+USDCAD,Markets\Forex\Majors\USDCAD,USD,US Dollar vs Canadian Dollar
+USDCHF,Markets\Forex\Majors\USDCHF,USD,US Dollar vs Swiss Franc
+USDJPY,Markets\Forex\Majors\USDJPY,USD,US Dollar vs Japanese Yen
+AUDNZD,Markets\Forex\Minors\AUDNZD,AUD,Australian Dollar vs New Zealand Dollar
+NZDUSD,Markets\Forex\Minors\NZDUSD,NZD,New Zealand Dollar vs US Dollar
+EURNZD,Markets\Forex\Minors\EURNZD,EUR,Euro vs New Zealand Dollar
+GBPNZD,Markets\Forex\Minors\GBPNZD,GBP,Great Britain Pound vs New Zealand Dollar
+NZDJPY,Markets\Forex\Minors\NZDJPY,NZD,New Zealand Dollar vs Japanese Yen
+NZDCAD,Markets\Forex\Minors\NZDCAD,NZD,New Zealand Dollar vs Canadian Dollar
+NZDCHF,Markets\Forex\Minors\NZDCHF,NZD,New Zealand Dollar vs Swiss Franc
+AUDCAD,Markets\Forex\Crosses\AUDCAD,AUD,Australian Dollar vs Canadian Dollar
+AUDCHF,Markets\Forex\Crosses\AUDCHF,AUD,Australian Dollar vs Swiss Franc
+EURAUD,Markets\Forex\Crosses\EURAUD,EUR,Euro vs Australian Dollar
+EURCHF,Markets\Forex\Crosses\EURCHF,EUR,Euro vs Swiss Franc
+EURGBP,Markets\Forex\Crosses\EURGBP,EUR,Euro vs Great Britain Pound
+GBPAUD,Markets\Forex\Crosses\GBPAUD,GBP,Great Britain Pound vs Australian Dollar
+GBPCHF,Markets\Forex\Crosses\GBPCHF,GBP,Great Britain Pound vs Swiss Franc
+AUDJPY,Markets\Forex\Crosses\AUDJPY,AUD,Australian Dollar vs Japanese Yen
+CADCHF,Markets\Forex\Crosses\CADCHF,CAD,Canadian Dollar vs Swiss Franc
+CADJPY,Markets\Forex\Crosses\CADJPY,CAD,Canadian Dollar vs Japanese Yen
+CHFJPY,Markets\Forex\Crosses\CHFJPY,CHF,Swiss Franc vs Japanese Yen
+EURCAD,Markets\Forex\Crosses\EURCAD,EUR,Euro vs Canadian Dollar
+EURJPY,Markets\Forex\Crosses\EURJPY,EUR,Euro vs Japanese Yen
+GBPCAD,Markets\Forex\Crosses\GBPCAD,GBP,Great Britain Pound vs Canadian Dollar
+GBPJPY,Markets\Forex\Crosses\GBPJPY,GBP,Great Britain Pound vs Japanese Yen
+AUDCNH,Markets\Forex\Crosses\AUDCNH,AUD,Australian Dollar vs Chinese Yuan
+CNHJPY,Markets\Forex\Crosses\CNHJPY,CNH,Chinese Yuan vs Japanese Yen
+AUDSGD,Markets\Forex\Exotics\AUDSGD,AUD,Australian Dollar vs Singapore Dollar
+CHFSGD,Markets\Forex\Exotics\CHFSGD,CHF,Swiss Franc vs Singapore Dollar
+EURCZK,Markets\Forex\Exotics\EURCZK,EUR,Euro vs Czech Republic Koruna
+EURHUF,Markets\Forex\Exotics\EURHUF,EUR,Euro vs Hungarian Forint
+EURMXN,Markets\Forex\Exotics\EURMXN,EUR,Euro vs Mexican Peso
+EURNOK,Markets\Forex\Exotics\EURNOK,EUR,Euro vs Norwegian Krone
+EURPLN,Markets\Forex\Exotics\EURPLN,EUR,Euro vs Polish Zloty
+EURSEK,Markets\Forex\Exotics\EURSEK,EUR,Euro vs Swedish Krona
+EURSGD,Markets\Forex\Exotics\EURSGD,EUR,Euro vs Singapore Dollar
+EURTRY,Markets\Forex\Exotics\EURTRY,EUR,Euro vs Turkish Lira
+EURZAR,Markets\Forex\Exotics\EURZAR,EUR,Euro vs South African Rand
+GBPMXN,Markets\Forex\Exotics\GBPMXN,GBP,Great Britain Pound vs Mexican Peso
+GBPNOK,Markets\Forex\Exotics\GBPNOK,GBP,Great Britain Pound vs Norwegian Krone
+GBPSEK,Markets\Forex\Exotics\GBPSEK,GBP,Great Britain Pound vs Swedish Krona
+GBPSGD,Markets\Forex\Exotics\GBPSGD,GBP,Great Britain Pound vs Singapore Dollar
+GBPTRY,Markets\Forex\Exotics\GBPTRY,GBP,Great Britain Pound vs Turkish Lira
+NOKJPY,Markets\Forex\Exotics\NOKJPY,NOK,Norwegian Krone vs Japanese Yen
+NOKSEK,Markets\Forex\Exotics\NOKSEK,NOK,Norwegian Krone vs Swedish Krona
+SEKJPY,Markets\Forex\Exotics\SEKJPY,SEK,Swedish Krona vs Japanese Yen
+SGDJPY,Markets\Forex\Exotics\SGDJPY,SGD,Singapore Dollar vs Japanese Yen
+USDCNH,Markets\Forex\Exotics\USDCNH,USD,US Dollar vs Chinese Yuan
+USDCZK,Markets\Forex\Exotics\USDCZK,USD,US Dollar vs Czech Republic Koruna
+USDHUF,Markets\Forex\Exotics\USDHUF,USD,US Dollar vs Hungarian Forint
+USDMXN,Markets\Forex\Exotics\USDMXN,USD,US Dollar vs Mexican Peso
+USDNOK,Markets\Forex\Exotics\USDNOK,USD,US Dollar vs Norwegian Krone
+USDPLN,Markets\Forex\Exotics\USDPLN,USD,US Dollar vs Polish Zloty
+USDSEK,Markets\Forex\Exotics\USDSEK,USD,US Dollar vs Swedish Krona
+USDSGD,Markets\Forex\Exotics\USDSGD,USD,US Dollar vs Singapore Dollar
+USDTHB,Markets\Forex\Exotics\USDTHB,USD,US Dollar vs Thai Baht
+USDTRY,Markets\Forex\Exotics\USDTRY,USD,US Dollar vs Turkish Lira
+USDZAR,Markets\Forex\Exotics\USDZAR,USD,US Dollar vs South African Rand
+ZARJPY,Markets\Forex\Exotics\ZARJPY,ZAR,South African Rand vs Japanese Yen
+USDHKD,Markets\Forex\Exotics\USDHKD,USD,US Dollar vs Hong Kong Dollar
+AUDDKK,Markets\Forex\Exotics\AUDDKK,AUD,Australian Dollar vs Danish Krone
+AUDHUF,Markets\Forex\Exotics\AUDHUF,AUD,Australian Dollar vs Hungarian Forint
+AUDNOK,Markets\Forex\Exotics\AUDNOK,AUD,Australian Dollar vs Norwegian Krone
+AUDPLN,Markets\Forex\Exotics\AUDPLN,AUD,Australian Dollar vs Polish Zloty
+CADMXN,Markets\Forex\Exotics\CADMXN,CAD,Canadian Dollar vs Mexican Peso
+CADSGD,Markets\Forex\Exotics\CADSGD,CAD,Canadian Dollar vs Singapore Dollar
+CHFDKK,Markets\Forex\Exotics\CHFDKK,CHF,Swiss Franc vs Danish Krone
+CHFHUF,Markets\Forex\Exotics\CHFHUF,CHF,Swiss Franc vs Hungarian Forint
+CHFNOK,Markets\Forex\Exotics\CHFNOK,CHF,Swiss Franc vs Norwegian Krone
+CHFPLN,Markets\Forex\Exotics\CHFPLN,CHF,Swiss Franc vs Polish Zloty
+CHFSEK,Markets\Forex\Exotics\CHFSEK,CHF,Swiss Franc vs Swedish Krona
+EURCNH,Markets\Forex\Exotics\EURCNH,EUR,Euro vs Chinese Yuan
+EURDKK,Markets\Forex\Exotics\EURDKK,EUR,Euro vs Danish Krone
+GBPCNH,Markets\Forex\Exotics\GBPCNH,GBP,Great British Pound vs Chinese Yuan
+GBPDKK,Markets\Forex\Exotics\GBPDKK,GBP,Great British Pound vs Danish Krone
+GBPHUF,Markets\Forex\Exotics\GBPHUF,GBP,Great British Pound vs Hungarian Forint
+MXNJPY,Markets\Forex\Exotics\MXNJPY,MXN,Mexican Peso vs Japanese Yen
+NZDCNH,Markets\Forex\Exotics\NZDCNH,NZD,New Zealand Dollar vs Chinese Yuan
+NZDHUF,Markets\Forex\Exotics\NZDHUF,NZD,New Zealand Dollar vs Hungarian Forint
+NZDSGD,Markets\Forex\Exotics\NZDSGD,NZD,New Zealand Dollar vs Singapore Dollar
+USDDKK,Markets\Forex\Exotics\USDDKK,USD,US Dollar vs Danish Krone
+EURILS,Markets\Forex\Exotics\EURILS,EUR,Euro vs Israeli New Shekel
+USDILS,Markets\Forex\Exotics\USDILS,USD,US Dollar vs Israeli New Shekel
+USDRON,Markets\Forex\Exotics\USDRON,USD,US Dollar vs Romanian Leu
+USDAED,Markets\Forex\Exotics\USDAED,USD,US Dollar vs UAE Dirham
+XAGEUR,Markets\Commodities\Silver\XAGEUR,XAG,Silver vs Euro
+XAGUSD,Markets\Commodities\Silver\XAGUSD,XAG,Silver vs US Dollar
+XAGAUD,Markets\Commodities\Silver\XAGAUD,XAG,Silver vs Australian Dollar
+XAUAUD,Markets\Commodities\Gold\XAUAUD,XAU,Gold vs Australian Dollar
+XAUEUR,Markets\Commodities\Gold\XAUEUR,XAU,Gold vs Euro
+XAUUSD,Markets\Commodities\Gold\XAUUSD,XAU,Gold vs US Dollar
+XAUGBP,Markets\Commodities\Gold\XAUGBP,XAU,Gold vs Great Britain Pound
+XAUCHF,Markets\Commodities\Gold\XAUCHF,XAU,Gold vs Swiss Franc
+XAUJPY,Markets\Commodities\Gold\XAUJPY,XAU,Gold vs Japanese Yen
+XPDUSD,Markets\Commodities\Metals\XPDUSD,XPD,Palladium vs US Dollar
+XPTUSD,Markets\Commodities\Metals\XPTUSD,XPT,Platinum vs US Dollar
+XAGSGD,Markets\Commodities\Silver\XAGSGD,XAG,Silver / Singapore dollar
+XAUCNH,Markets\Commodities\Gold\XAUCNH,XAU,Gold / Chinese Yuan
+XAUSGD,Markets\Commodities\Gold\XAUSGD,XAU,Gold / Singapore dollar
+XAUTHB,Markets\Commodities\Gold\XAUTHB,XAU,Gold / Thai Baht
+AUS200,Markets\Indices\Majors\AUS200,AUD,Australia 200 Index
+CN50,Markets\Indices\Minors\CN50,USD,China 50 Index
+HK50,Markets\Indices\Minors\HK50,HKD,Hong Kong 50 Index
+EUSTX50,Markets\Indices\Majors\EUSTX50,EUR,EU 50 Index
+FRA40,Markets\Indices\Majors\FRA40,EUR,France 40 Index
+JPN225,Markets\Indices\Majors\JPN225,JPY,Japan 225 Index
+NAS100,Markets\Indices\Majors\NAS100,USD,US Tech 100 Index
+SPA35,Markets\Indices\Minors\SPA35,EUR,Spain 35 Index
+UK100,Markets\Indices\Majors\UK100,GBP,UK 100 Index
+US2000,Markets\Indices\Minors\US2000,USD,US 2000 Index
+US30,Markets\Indices\Majors\US30,USD,US Wall Street 30 Index
+US500,Markets\Indices\Majors\US500,USD,US 500 Index
+USDX,Markets\Indices\Currency\USDX,USD,US Dollar Index
+SCI25,Markets\Indices\Minors\SCI25,SGD,Singapore 25 Index Cash
+VIX,Markets\Indices\Minors\VIX,USD,US Volatility Index
+JPYX,Markets\Indices\Currency\JPYX,JPY,Japanese Yen Currency Index
+EURX,Markets\Indices\Currency\EURX,EUR,Euro Currency Index
+CA60,Markets\Indices\Minors\CA60,CAD,Canada 60 Index
+CHINAH,Markets\Indices\Minors\CHINAH,HKD,Hong Kong China H-shares Index
+NETH25,Markets\Indices\Minors\NETH25,EUR,Netherlands 25 Index
+SWI20,Markets\Indices\Minors\SWI20,CHF,Switzerland 20 Index
+GER40,Markets\Indices\Majors\GER40,EUR,Germany DAX 40 Index
+NOR25,Markets\Indices\Minors\NOR25,NOK,Norway 25 Index
+SA40,Markets\Indices\Minors\SA40,ZAR,South Africa 40 Index
+HSTECH,Markets\Indices\Minors\HSTECH,HKD,Hang Seng Tech Index
+US400,Markets\Indices\Minors\US400,USD,S&P 400 Midcap
+TWN,Markets\Indices\Minors\TWN,USD,FTSE Taiwan RIC Capped Index
+ADAUSD,Markets\Cryptocurrencies\Minor\ADAUSD,USD,Cardano vs US Dollar
+AVAXUSD,Markets\Cryptocurrencies\Minor\AVAXUSD,USD,Avalanche vs US Dollar
+BCHUSD,Markets\Cryptocurrencies\Minor\BCHUSD,USD,Bitcoin Cash vs US Dollar
+BNBUSD,Markets\Cryptocurrencies\Minor\BNBUSD,USD,Binance Coin vs US Dollar
+COMPUSD,Markets\Cryptocurrencies\Minor\COMPUSD,USD,Compound vs US Dollar
+DOGEUSD,Markets\Cryptocurrencies\Minor\DOGEUSD,USD,Dogecoin vs US Dollar
+DOTUSD,Markets\Cryptocurrencies\Minor\DOTUSD,USD,Polkadot vs US Dollar
+ETCUSD,Markets\Cryptocurrencies\Minor\ETCUSD,USD,Ethereum Classic VS US Dollar
+GLMRUSD,Markets\Cryptocurrencies\Minor\GLMRUSD,USD,Glimmer Vs US Dollar
+KSMUSD,Markets\Cryptocurrencies\Minor\KSMUSD,USD,Kusama Vs US Dollar
+LINKUSD,Markets\Cryptocurrencies\Minor\LINKUSD,USD,Chainlink vs US Dollar
+MATICUSD,Markets\Cryptocurrencies\Minor\MATICUSD,USD,Polygon vs US Dollar
+SOLUSD,Markets\Cryptocurrencies\Minor\SOLUSD,USD,Solana vs US Dollar
+UNIUSD,Markets\Cryptocurrencies\Minor\UNIUSD,USD,Uniswap vs US Dollar
+XLMUSD,Markets\Cryptocurrencies\Minor\XLMUSD,USD,Stellar Lumens vs US Dollar
+XRPUSD,Markets\Cryptocurrencies\Minor\XRPUSD,USD,Ripple vs US Dollar
+BTCAUD,Markets\Cryptocurrencies\Major\BTCAUD,AUD,Bitcoin vs Australian Dollar
+BTCEUR,Markets\Cryptocurrencies\Major\BTCEUR,EUR,Bitcoin Vs Euro
+BTCGBP,Markets\Cryptocurrencies\Major\BTCGBP,GBP,Bitcoin Vs British Pound
+BTCUSD,Markets\Cryptocurrencies\Major\BTCUSD,USD,Bitcoin vs US Dollar
+ETHAUD,Markets\Cryptocurrencies\Major\ETHAUD,AUD,Ethereum Vs Australian Dollar
+ETHEUR,Markets\Cryptocurrencies\Major\ETHEUR,EUR,Ethereum Vs Euro
+ETHGBP,Markets\Cryptocurrencies\Major\ETHGBP,GBP,Ethereum Vs British Pound
+ETHUSD,Markets\Cryptocurrencies\Major\ETHUSD,USD,Ethereum vs US Dollar
+LTCUSD,Markets\Cryptocurrencies\Major\LTCUSD,USD,Litecoin vs US Dollar
+XTZUSD,Markets\Cryptocurrencies\Minor\XTZUSD,USD,Tezos vs US Dollar
+TRUMPUSD,Markets\Cryptocurrencies\Minor\TRUMPUSD,USD,TRUMP vs US Dollar
+AAVUSD,Markets\Cryptocurrencies\Minor\AAVUSD,USD,AAVE vs US Dollar
+ATMUSD,Markets\Cryptocurrencies\Minor\ATMUSD,USD,Cosmos vs US Dollar
+FLOUSD,Markets\Cryptocurrencies\Minor\FLOUSD,USD,1000 Floki Inu vs US Dollar
+JUPUSD,Markets\Cryptocurrencies\Minor\JUPUSD,USD,Jupiter vs US Dollar
+NERUSD,Markets\Cryptocurrencies\Minor\NERUSD,USD,NEAR vs US Dollar
+ONDUSD,Markets\Cryptocurrencies\Minor\ONDUSD,USD,ONDO vs US Dollar
+PEPUSD,Markets\Cryptocurrencies\Minor\PEPUSD,USD,1000 PEPE vs US Dollar
+SHBUSD,Markets\Cryptocurrencies\Minor\SHBUSD,USD,1000 Shiba Inu vs US Dollar
+TRXUSD,Markets\Cryptocurrencies\Minor\TRXUSD,USD,TRON vs US Dollar
+WIFUSD,Markets\Cryptocurrencies\Minor\WIFUSD,USD,dogwifhat vs US Dollar
+ARBUSD,Markets\Cryptocurrencies\Minor\ARBUSD,USD,Arbitrum vs US Dollar
+BNKUSD,Markets\Cryptocurrencies\Minor\BNKUSD,USD,1000 BONK vs US Dollar
+MANUSD,Markets\Cryptocurrencies\Minor\MANUSD,USD,Decentraland vs US Dollar
+SANUSD,Markets\Cryptocurrencies\Minor\SANUSD,USD,The Sandbox vs US Dollar
+POLUSD,Markets\Cryptocurrencies\Minor\POLUSD,USD,Polygon (Ex-MATIC) vs US Dollar
+SONUSD,Markets\Cryptocurrencies\Minor\SONUSD,USD,Sonic vs US Dollar
+HBARUSD,Markets\Cryptocurrencies\Minor\HBARUSD,USD,Hedera vs US Dollar
+SUIUSD,Markets\Cryptocurrencies\Minor\SUIUSD,USD,Sui vs US Dollar
+TONUSD,Markets\Cryptocurrencies\Minor\TONUSD,USD,Toncoin vs US Dollar
+APTUSD,Markets\Cryptocurrencies\Minor\APTUSD,USD,Aptos vs US Dollar
+HYPEUSD,Markets\Cryptocurrencies\Minor\HYPEUSD,USD,Hyperliquid vs US Dollar
+INJUSD,Markets\Cryptocurrencies\Minor\INJUSD,USD,Injective vs US Dollar
+RENDERUSD,Markets\Cryptocurrencies\Minor\RENDERUSD,USD,Render vs US Dollar
+FETUSD,Markets\Cryptocurrencies\Minor\FETUSD,USD,Artificial Superintelligence Alliance vs US Dollar
+XAUTUSD,Markets\Cryptocurrencies\Real World Assets\XAUTUSD,USD,Tether Gold vs US Dollar
+PAXGUSD,Markets\Cryptocurrencies\Real World Assets\PAXGUSD,USD,PAX Gold vs US Dollar
+USDBRL,Markets\Forex\NDFs\USDBRL,USD,US Dollar vs Brazilian Real
+USDIDR,Markets\Forex\NDFs\USDIDR,USD,US Dollar vs Indonesian Rupiah
+USDINR,Markets\Forex\NDFs\USDINR,USD,US Dollar vs Indian Rupee
+USDKRW,Markets\Forex\NDFs\USDKRW,USD,US Dollar vs South Korean won
+USDCLP,Markets\Forex\NDFs\USDCLP,USD,US Dollar vs Chile Peso
+USDCOP,Markets\Forex\NDFs\USDCOP,USD,US Dollar vs Colombia Peso
+USDTWD,Markets\Forex\NDFs\USDTWD,USD,US Dollar vs Taiwan Dollar
+GER40-F,Markets\Forwards\Indices\Major\GER40-F,EUR,Germany 40 - Forward (19 Mar - 17 Jun)
+HK50-F,Markets\Forwards\Indices\Minor\HK50-F,HKD,Hong Kong 50 - Forward (28 Mar - 27 Apr)
+JPN225-F,Markets\Forwards\Indices\Major\JPN225-F,JPY,Japan 225 - Forward (11 Mar - 9 Jun)
+UK100-F,Markets\Forwards\Indices\Major\UK100-F,GBP,UK 100 - Forward (19 Mar - 17 Jun)
+US30-F,Markets\Forwards\Indices\Major\US30-F,USD,US 30 - Forward (19 Mar - 16 Jun)
+NAS100-F,Markets\Forwards\Indices\Major\NAS100-F,USD,US NDAQ 100 - Forward (19 Mar - 16 Jun)
+US500-F,Markets\Forwards\Indices\Major\US500-F,USD,US SPX 500 - Forward (19 Mar - 16 Jun)
+XAUUSD-F,Markets\Forwards\Commodities\Metals\XAUUSD-F,XAU,Gold - Forward (25 Mar - 22 May)
+XAGUSD-F,Markets\Forwards\Commodities\Metals\XAGUSD-F,XAG,Silver - Forward (25 Feb - 24 Apr)
+USDX-F,Markets\Forwards\Indices\Currency\USDX-F,USD,US Dollar Index - Forward (12 Mar - 10 Jun)
+EUSTX50-F,Markets\Forwards\Indices\Major\EUSTX50-F,EUR,Euro 50 - Forward (19 Mar - 17 Jun)
+FRA40-F,Markets\Forwards\Indices\Major\FRA40-F,EUR,France 40 - Forward (16 Apr - 13 May)
+SWI20-F,Markets\Forwards\Indices\Minor\SWI20-F,CHF,Switzerland 20 - Forward (19 Mar - 17 Jun)

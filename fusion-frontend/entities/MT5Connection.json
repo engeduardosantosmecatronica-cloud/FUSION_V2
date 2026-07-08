@@ -1,0 +1,43 @@
+{
+  "name": "MT5Connection",
+  "type": "object",
+  "properties": {
+    "server": {
+      "type": "string",
+      "description": "MT5 server address"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "MT5 account number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "disconnected",
+        "error"
+      ],
+      "default": "disconnected"
+    },
+    "balance": {
+      "type": "number"
+    },
+    "equity": {
+      "type": "number"
+    },
+    "margin": {
+      "type": "number"
+    },
+    "free_margin": {
+      "type": "number"
+    },
+    "last_sync": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "server",
+    "account_id"
+  ]
+}

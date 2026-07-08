@@ -1,0 +1,85 @@
+qlib_init:
+    provider_uri: "D:/Projeto_Python/qlib_data/bin"
+    region: cn  # O padrão do QLib, não afeta o Forex
+
+market: &market all
+benchmark: &benchmark eurusd  # O benchmark para comparação de performance
+
+data_handler_config: &data_handler_config
+    start_time: 2020-01-01
+    end_time: 2024-12-31
+    fit_start_time: 2020-01-01
+    fit_end_time: 2022-12-31
+    instruments: *market
+    # Definição dos Alpha Factors (Features)
+    infer_processors:
+        - class: RobustZScoreNorm
+          kwargs:
+              fields_group: feature
+              clip_outlier: true
+        - class: Fillna
+          kwargs:
+              fields_group: feature
+    learn_processors:
+        - class: DropnaLabel
+        - class: CSRLabelProcess  # Normaliza o target (label)
+          kwargs:
+              fields_group: label
+    label: ["Ref($close, -1) / $close - 1"] # Prever o retorno do próximo candle
+    feature:
+        - ["$close / $open - 1", "($high - $low) / $close", "($close - Mean($close, 10)) / $close"]
+        - ["ROC(10)", "RSI(14)", "Std(20)", "Log($volume + 1)"]
+
+port_analysis_config: &port_analysis_config
+    strategy:
+        class: TopkDropoutStrategy
+        kwargs:
+            signal: <MODEL>
+            topk: 1
+            n_drop: 1
+    backtest:
+        start_time: 2023-01-01
+        end_time: 2024-12-31
+        account: 100000
+        benchmark: *benchmark
+        exchange_kwargs:
+            limit_threshold: 0.095
+            deal_price: close
+            open_cost: 0.00001 # Ajuste conforme seu spread (ex: 1 pip)
+            close_cost: 0.00001
+            min_cost: 0
+
+task:
+    model:
+        class: LGBModel
+        module_path: qlib.contrib.model.gbdt
+        kwargs:
+            loss: mse
+            colsample_bytree: 0.8879
+            learning_rate: 0.04
+            subsample: 0.8789
+            lambda_l1: 205.6999
+            lambda_l2: 580.9768
+            max_depth: 8
+            num_leaves: 210
+            num_threads: 20
+    dataset:
+        class: DatasetH
+        module_path: qlib.data.dataset
+        kwargs:
+            handler:
+                class: Alpha158
+                module_path: qlib.contrib.data.handler
+                kwargs: *data_handler_config
+            segments:
+                train: [2020-01-01, 2022-12-31]
+                valid: [2023-01-01, 2023-06-30]
+                test: [2023-07-01, 2024-12-31]
+    record: 
+        - class: SignalRecord
+        - class: SigAnaRecord
+          kwargs: 
+            ana_long_short: False
+        - class: PortAnaRecord
+          kwargs: 
+            config: *port_analysis_config

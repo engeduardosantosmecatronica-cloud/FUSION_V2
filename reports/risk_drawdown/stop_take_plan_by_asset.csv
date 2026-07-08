@@ -1,0 +1,14 @@
+symbol,signals_total,worst_drawdown_points,p95_drawdown_points,conservative_sl_from_p95_points,disaster_sl_from_worst_points,optimized_group_operable,optimized_tp_points_operable,optimized_sl_points_operable,optimized_win_rate_operable,optimized_avg_points_operable,optimized_max_loss_streak_operable,discarded_best_due_sl_lt_15,recommended_by_backtest,operational_note
+AUDJPY,18,149.0,149.0,165,165,H1 BUY,5.0,15.0,0.0,-15.0,18,True,False,Melhor antigo usava SL < 15 e foi descartado; alternativa operavel ainda nao passou criterios
+CADCHF,9,64.0,64.0,75,75,,,,,,,False,False,Nao passou criterios; usar apenas como limite de risco ou exigir confirmacao extra
+CHFJPY,32,90.0,87.0,100,100,M15 BUY,5.0,100.0,100.0,-12.55,0,False,False,Nao passou criterios; usar apenas como limite de risco ou exigir confirmacao extra
+EURCAD,126,263.0,243.0,270,280,H4 BUY,30.0,40.0,13.49,-30.56,37,True,False,Melhor antigo usava SL < 15 e foi descartado; alternativa operavel ainda nao passou criterios
+EURGBP,26,52.0,51.25,60,60,H4 SELL,30.0,70.0,100.0,22.65,0,False,True,OK para shadow/validacao com SL operavel
+EURNZD,16,96.0,96.0,110,110,H1 BUY,5.0,15.0,0.0,-15.0,16,True,False,Melhor antigo usava SL < 15 e foi descartado; alternativa operavel ainda nao passou criterios
+EURUSD,41,107.0,103.0,115,115,H1 BUY,25.0,15.0,4.88,-13.05,37,True,False,Melhor antigo usava SL < 15 e foi descartado; alternativa operavel ainda nao passou criterios
+GBPCHF,3,25.0,25.0,30,30,,,,,,,False,False,Nao passou criterios; usar apenas como limite de risco ou exigir confirmacao extra
+GBPUSD,46,126.0,125.0,140,140,H1 BUY,15.0,15.0,6.52,-13.04,27,True,False,Melhor antigo usava SL < 15 e foi descartado; alternativa operavel ainda nao passou criterios
+NZDCHF,6,68.0,68.0,75,75,,,,,,,False,False,Nao passou criterios; usar apenas como limite de risco ou exigir confirmacao extra
+NZDSGD,6,67.0,67.0,75,75,,,,,,,False,False,Nao passou criterios; usar apenas como limite de risco ou exigir confirmacao extra
+NZDUSD,35,108.0,89.8,100,115,H1 BUY,5.0,15.0,0.0,-15.0,35,True,False,Melhor antigo usava SL < 15 e foi descartado; alternativa operavel ainda nao passou criterios
+USDCHF,3,36.0,36.0,40,40,,,,,,,False,False,Nao passou criterios; usar apenas como limite de risco ou exigir confirmacao extra

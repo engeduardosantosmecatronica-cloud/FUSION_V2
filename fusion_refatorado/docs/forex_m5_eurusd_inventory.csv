@@ -1,0 +1,12 @@
+path,file_name,extension,bytes
+fusion_refatorado\data\forex_m5_eurusd\csv\M5\eurusd.csv,eurusd.csv,.csv,23424079
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\calendars\5min.txt,5min.txt,.txt,6705762
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\close.5min.bin,close.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\decimals.5min.bin,decimals.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\high.5min.bin,high.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\low.5min.bin,low.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\open.5min.bin,open.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\point_value.5min.bin,point_value.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\spread.5min.bin,spread.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\features\eurusd\volume.5min.bin,volume.5min.bin,.bin,1277292
+fusion_refatorado\data\forex_m5_eurusd\qlib_data_m5\instruments\all.txt,all.txt,.txt,48

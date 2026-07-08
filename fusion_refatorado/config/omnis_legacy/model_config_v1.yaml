@@ -1,0 +1,56 @@
+# model_config_v1.yaml
+
+qlib_init: # Inicia a configuração global do framework Qlib
+    provider_uri: "d:/Projeto_Python/OMNIS/data/qlib_bin" # Caminho onde estão seus dados convertidos para formato binário (rápido)
+    region: "cn" # Define a convenção de calendário/fuso (comum no Qlib, mesmo operando Forex/Crypto)
+
+market: &market all # Cria uma variável 'market' que engloba todos os ativos (EURUSD, BTC, etc.) disponíveis na pasta bin
+benchmark: &benchmark eurusd # Define o EURUSD como base de comparação para medir o desempenho do modelo
+
+data_handler_config: &data_handler_config # Bloco de configuração de como os dados serão "tratados"
+    start_time: 2022-01-01 # Data de início de todo o histórico de dados
+    end_time: 2026-03-29 # Data final do histórico para este ciclo de treinamento
+    instruments: *market # Aplica a configuração para todos os ativos definidos acima
+    data_loader: # Ferramenta que carrega os dados brutos
+        class: QlibDataLoader # Usa o carregador padrão de arquivos binários do Qlib
+        kwargs: # Argumentos específicos para o carregador
+            config:
+                feature: # --- ENGENHARIA DE ATRIBUTOS (O que a IA vai "olhar") ---
+                    - "(Ref($close, 0) - Mean($close, 20)) / Mean($close, 20)" # Distância do preço atual vs Média de 20 períodos (Tendência)
+                    - "(Ref($close, 0) - Mean($close, 60)) / Mean($close, 60)" # Distância do preço atual vs Média de 60 períodos (Tendência Longa)
+                    - "Std($close, 20) / Mean($close, 20)" # Volatilidade normalizada (Coeficiente de Variação)
+                    - "RSI($close, 14)" # Índice de Força Relativa (identifica sobrecompra/sobrevenda)
+                    - "(Ref($close, 0) - Ref($close, 1)) / Ref($close, 1)" # Retorno simples da última barra (Momentum imediato)
+                    - "$high / $close - 1" # Tamanho do pavio superior em relação ao fechamento
+                    - "$low / $close - 1" # Tamanho do pavio inferior em relação ao fechamento
+                label: # --- ALVO (O que a IA deve tentar prever) ---
+                    - "Ref($close, -1) / $close - 1" # Retorno da PRÓXIMA barra (Previsão de 1 passo à frente)
+    learn_processors: # Processamento de limpeza antes de entregar para a IA
+        - class: DropnaLabel # Remove automaticamente as linhas onde o 'label' (futuro) é desconhecido (ex: barras recentes)
+
+model: # --- CONFIGURAÇÃO DA INTELIGÊNCIA ARTIFICIAL ---
+    class: LGBModel # Usa o LightGBM, um algoritmo de árvores de decisão potente para dados tabulares
+    module_path: qlib.contrib.model.gbdt # Caminho interno do código do modelo no Qlib
+    kwargs: # Hiperparâmetros (os "botões" que regulam a precisão e evitam o Overfitting)
+        loss: mse # Função de erro: Erro Quadrático Médio (focado em acertar a magnitude do movimento)
+        colsample_bytree: 0.8879 # Usa 88% das colunas por árvore (traz diversidade ao modelo)
+        learning_rate: 0.0421 # Velocidade de aprendizado (baixa para ser mais preciso e estável)
+        subsample: 0.8789 # Usa 87% dos dados para cada árvore (evita que o modelo decore o passado)
+        lambda_l1: 205.6999 # Penalidade L1 (ajuda a ignorar 'features' inúteis ou ruidosas)
+        lambda_l2: 580.9768 # Penalidade L2 (suaviza os pesos para o modelo não ser agressivo demais)
+        max_depth: 8 # Profundidade máxima das árvores (limita a complexidade das regras)
+        num_leaves: 210 # Máximo de nós nas árvores (balanceia profundidade e precisão)
+        num_threads: 20 # Usa 20 núcleos do seu processador para treinar super rápido
+
+dataset: # --- DIVISÃO DOS DADOS PARA TESTE ---
+    class: DatasetH # Classe que organiza os dados em pacotes de tempo
+    module_path: qlib.data.dataset # Localização do módulo
+    kwargs:
+        handler:
+            class: DataHandlerLP # Processador que aplica as fórmulas de 'feature' acima
+            module_path: qlib.data.dataset.handler
+            kwargs: *data_handler_config # Puxa as configurações que definimos lá no início
+        segments: # Divisão do tempo para validar se a estratégia funciona
+            train: [2022-01-01, 2024-12-31] # O modelo estuda este período (Aprender)
+            valid: [2025-01-01, 2025-06-30] # O modelo testa ajustes aqui (Ajustar)
+            test: [2025-07-01, 2026-03-29] # O modelo é avaliado aqui (Prova Real / Simulação fora da amostra)

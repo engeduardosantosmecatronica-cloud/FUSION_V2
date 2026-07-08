@@ -1,0 +1,73 @@
+# Ambientes locais
+.venv/
+venv/
+.venv_e/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Credenciais e configuracoes locais sensiveis
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Dependencias JS/.NET/build
+node_modules/
+bin/
+obj/
+terminal_windows/bin_check/
+dist/
+build/
+.next/
+.vite/
+
+# Estado vivo, logs e caches runtime
+logs/
+runtime/
+*.log
+*.tmp
+*.bak
+*.bak_*
+
+# Relatorios gerados pesados: manter Markdown/scripts, ignorar dados brutos exportados
+reports/**/*.csv
+reports/**/*.json
+reports/**/*.jsonl
+reports/**/*.parquet
+!reports/project_inventory/*.csv
+!reports/risk_drawdown/*.csv
+fusion_refatorado/reports/
+
+# Dados e modelos pesados/gerados
+data/
+models/
+models_experts/
+models_experts_v2/
+models_expr/
+models_principal/
+models_research/
+*.pkl
+*.joblib
+*.onnx
+*.pt
+*.pth
+*.h5
+*.parquet
+*.feather
+*.fcnd
+*.fcni
+
+# Arquivo morto/local e externos
+_archive/
+_external/
+rustup-init.exe
+
+# Sistema/IDE
+.DS_Store
+Thumbs.db

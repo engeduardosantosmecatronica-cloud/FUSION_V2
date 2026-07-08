@@ -1,0 +1,34 @@
+# EXECUÇÃO/config/symbols.yaml
+
+symbols:
+  
+  - BCHUSD
+  
+  - BTCUSD
+  
+  - ETHUSD
+  
+  - AUDJPY
+  - AUDUSD
+  - CHFJPY
+  - EURAUD
+  - EURCAD
+  - EURGBP
+  - EURJPY
+  - EURMXN
+  - EURNOK
+  - EURSEK
+  - EURUSD
+  - GBPJPY
+  - GBPUSD
+  - NZDUSD
+  - USDCAD
+  - USDCHF
+  - USDHKD
+  - USDJPY
+  - USDMXN
+  - USDNOK
+  - USDPLN
+  - USDSEK
+  - USDSGD
+  - GOLD

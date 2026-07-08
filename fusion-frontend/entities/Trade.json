@@ -1,0 +1,68 @@
+{
+  "name": "Trade",
+  "type": "object",
+  "properties": {
+    "symbol": {
+      "type": "string",
+      "description": "Trading symbol"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "BUY",
+        "SELL"
+      ],
+      "description": "Trade type"
+    },
+    "entry_price": {
+      "type": "number",
+      "description": "Entry price"
+    },
+    "exit_price": {
+      "type": "number",
+      "description": "Exit price"
+    },
+    "lot_size": {
+      "type": "number",
+      "description": "Lot size"
+    },
+    "stop_loss": {
+      "type": "number"
+    },
+    "take_profit": {
+      "type": "number"
+    },
+    "profit": {
+      "type": "number",
+      "description": "Profit/Loss in currency"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "closed",
+        "pending"
+      ],
+      "default": "open"
+    },
+    "opened_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mt5_ticket": {
+      "type": "string",
+      "description": "MT5 ticket number"
+    }
+  },
+  "required": [
+    "symbol",
+    "type",
+    "entry_price",
+    "lot_size",
+    "status"
+  ]
+}

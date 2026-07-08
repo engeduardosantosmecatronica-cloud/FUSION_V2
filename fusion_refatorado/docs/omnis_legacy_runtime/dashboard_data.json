@@ -1,0 +1,126 @@
+{
+  "positions": {
+    "total": 1,
+    "total_pnl": 0.52,
+    "profit": [
+      {
+        "symbol": "EURUSD",
+        "ticket": 156724639,
+        "profit": 0.52,
+        "type": "BUY",
+        "price_open": 1.16802,
+        "price_current": 1.16854,
+        "sl": 1.16302,
+        "trailing_active": false
+      }
+    ],
+    "loss": [],
+    "trailing_mode": "FIXO",
+    "trailing_enabled": false
+  },
+  "signals": [
+    {
+      "symbol": "BCHUSD",
+      "timeframe": "H1",
+      "decision": "NEUTRAL",
+      "score": 0.04,
+      "alignment": 0.0,
+      "indicators": {
+        "rsi": 53.57138442993164,
+        "macd": -0.001306544174440205,
+        "stoch": 0.4545450210571289,
+        "bb_pct": 0.21370504796504974,
+        "prob_buy": 0.2592736565918062,
+        "prob_sell": 0.21924168942821848,
+        "prob_hold": 0.6
+      },
+      "filter_block": "Z-Score BUY (0.300)"
+    },
+    {
+      "symbol": "BTCUSD",
+      "timeframe": "H1",
+      "decision": "SELL",
+      "score": -0.167,
+      "alignment": 0.0,
+      "indicators": {
+        "rsi": 48.72952651977539,
+        "macd": -3.2516574719920754e-05,
+        "stoch": 0.3245444893836975,
+        "bb_pct": 0.42777103185653687,
+        "prob_buy": 0.24012630808327334,
+        "prob_sell": 0.4071549295438568,
+        "prob_hold": 0.6
+      },
+      "filter_block": null
+    },
+    {
+      "symbol": "ETHUSD",
+      "timeframe": "H1",
+      "decision": "SELL",
+      "score": -0.1522,
+      "alignment": -1.0,
+      "indicators": {
+        "rsi": 37.08051300048828,
+        "macd": -0.0056164157576859,
+        "stoch": 0.07532943040132523,
+        "bb_pct": 1.4224770069122314,
+        "prob_buy": 0.29790259672037267,
+        "prob_sell": 0.4501056763806752,
+        "prob_hold": 0.6
+      },
+      "filter_block": null
+    },
+    {
+      "symbol": "AUDJPY",
+      "timeframe": "H1",
+      "decision": "NEUTRAL",
+      "score": -0.0032,
+      "alignment": 0.0,
+      "indicators": {
+        "rsi": 53.7083740234375,
+        "macd": -7.765759073663503e-05,
+        "stoch": 0.32322511076927185,
+        "bb_pct": 0.07584051042795181,
+        "prob_buy": 0.0737011050079315,
+        "prob_sell": 0.07694714555947288,
+        "prob_hold": 0.6
+      },
+      "filter_block": null
+    },
+    {
+      "symbol": "EURUSD",
+      "timeframe": "H1",
+      "decision": "NEUTRAL",
+      "score": -0.0771,
+      "alignment": -1.0,
+      "indicators": {
+        "rsi": 44.55503845214844,
+        "macd": -0.0006168822874315083,
+        "stoch": 0.19793251156806946,
+        "bb_pct": 0.1189037561416626,
+        "prob_buy": 0.1121490086651863,
+        "prob_sell": 0.18921734088073375,
+        "prob_hold": 0.6
+      },
+      "filter_block": "Z-Score SELL (-0.100)"
+    },
+    {
+      "symbol": "USDMXN",
+      "timeframe": "H1",
+      "decision": "NEUTRAL",
+      "score": 0.2812,
+      "alignment": 1.0,
+      "indicators": {
+        "rsi": 63.470279693603516,
+        "macd": 0.0007117052446119487,
+        "stoch": 0.7879016995429993,
+        "bb_pct": -0.3229064643383026,
+        "prob_buy": 0.4092295821275873,
+        "prob_sell": 0.12799717985400513,
+        "prob_hold": 0.6
+      },
+      "filter_block": "Z-Score BUY (0.300)"
+    }
+  ],
+  "timestamp": 1776965770505
+}

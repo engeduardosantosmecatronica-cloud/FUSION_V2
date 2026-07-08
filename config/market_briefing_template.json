@@ -1,0 +1,72 @@
+{
+  "enabled": true,
+  "date": "2026-05-28",
+  "valid_until": "2026-05-28T23:59:00-03:00",
+  "summary": "Resumo curto do dia: fluxo macro, noticias relevantes, juros, DXY, commodities, indices e risco geral.",
+  "risk_regime": "risk_on_moderado",
+  "notes": [
+    "Use este arquivo como contexto, nao como ordem direta.",
+    "O Fusion interpreta vies por moeda/par/ativo e compara com BUY/SELL do modelo."
+  ],
+  "currency_bias": {
+    "USD": {
+      "bias": "bullish",
+      "strength": 0.60,
+      "drivers": ["DXY_sustentado", "juros_USA_altos"]
+    },
+    "EUR": {
+      "bias": "bearish",
+      "strength": 0.65,
+      "drivers": ["dados_fracos", "fluxo_inconsistente"]
+    },
+    "JPY": {
+      "bias": "bearish",
+      "strength": 0.75,
+      "drivers": ["yield_spread_contra_jpy", "carry_trade"]
+    },
+    "NZD": {
+      "bias": "bullish",
+      "strength": 0.70,
+      "drivers": ["moeda_forte_no_bloco", "risk_on"]
+    }
+  },
+  "pair_bias": {
+    "EURNZD": {
+      "bias": "SELL",
+      "strength": 0.85,
+      "drivers": ["EUR_fraco", "NZD_forte"]
+    },
+    "USDJPY": {
+      "bias": "BUY",
+      "strength": 0.80,
+      "drivers": ["USD_sustentado", "JPY_fraco"]
+    }
+  },
+  "asset_bias": {
+    "GOLD": {
+      "bias": "NEUTRO",
+      "strength": 0.20,
+      "drivers": ["aguardar_DXY_e_yields"]
+    },
+    "BTCUSD": {
+      "bias": "bullish",
+      "strength": 0.55,
+      "drivers": ["tendencia_maior_bullish", "pullback_curto"]
+    },
+    "ETHUSD": {
+      "bias": "bullish",
+      "strength": 0.60,
+      "drivers": ["momentum_crypto"]
+    }
+  },
+  "rules": [
+    {
+      "label": "noticia_alto_impacto_usd",
+      "symbols": ["EURUSD", "GBPUSD", "AUDUSD", "NZDUSD", "USDJPY", "GOLD"],
+      "timeframes": ["M5", "M15", "M30"],
+      "risk": "ALTO",
+      "action": "moderate",
+      "reasons": ["evitar_entrada_perto_de_noticia", "spread_e_volatilidade"]
+    }
+  ]
+}

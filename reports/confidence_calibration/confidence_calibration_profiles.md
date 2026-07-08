@@ -1,0 +1,105 @@
+# Confidence Calibration Profiles
+
+- Perfis exatos: 68
+- Perfis fallback: 46
+- Prior samples: 200.0
+- Prior probability: 0.5
+
+## Top Perfis Por Confiabilidade
+
+- NZDCHF H1 sell: samples=12916 posterior=0.766 wilson=0.763 reliability=0.834
+- AUDCHF H1 sell: samples=13446 posterior=0.748 wilson=0.744 reliability=0.821
+- GBPAUD M15 buy: samples=8789 posterior=0.711 wilson=0.706 reliability=0.794
+- CADCHF H1 sell: samples=13718 posterior=0.710 wilson=0.706 reliability=0.794
+- AUDCAD H1 sell: samples=13242 posterior=0.709 wilson=0.705 reliability=0.793
+- NZDSGD H1 sell: samples=13022 posterior=0.701 wilson=0.696 reliability=0.787
+- NZDCAD H1 sell: samples=14902 posterior=0.683 wilson=0.678 reliability=0.775
+- GBPCHF M5 sell: samples=6602 posterior=0.680 wilson=0.675 reliability=0.772
+- XAUUSD H1 buy: samples=7329 posterior=0.678 wilson=0.673 reliability=0.771
+- AUDNZD H1 sell: samples=5157 posterior=0.674 wilson=0.668 reliability=0.767
+- AUDJPY H1 sell: samples=14937 posterior=0.671 wilson=0.666 reliability=0.766
+- GBPCHF H1 sell: samples=12040 posterior=0.667 wilson=0.661 reliability=0.763
+- NZDCAD M5 sell: samples=6890 posterior=0.667 wilson=0.661 reliability=0.762
+- GBPCAD H1 buy: samples=6216 posterior=0.660 wilson=0.653 reliability=0.757
+- USDCHF H1 sell: samples=7674 posterior=0.657 wilson=0.651 reliability=0.755
+- CADCHF M15 sell: samples=7440 posterior=0.654 wilson=0.647 reliability=0.753
+- EURCHF H1 sell: samples=12808 posterior=0.651 wilson=0.645 reliability=0.751
+- AUDSGD H1 buy: samples=7105 posterior=0.651 wilson=0.644 reliability=0.751
+- EURAUD H1 buy: samples=7925 posterior=0.647 wilson=0.640 reliability=0.748
+- CHFJPY M15 buy: samples=7121 posterior=0.643 wilson=0.635 reliability=0.745
+- AUDCAD M5 sell: samples=5534 posterior=0.638 wilson=0.630 reliability=0.741
+- NZDJPY H1 sell: samples=5778 posterior=0.631 wilson=0.623 reliability=0.736
+- EURNZD M15 buy: samples=8588 posterior=0.630 wilson=0.623 reliability=0.736
+- GBPCAD M15 buy: samples=7123 posterior=0.627 wilson=0.620 reliability=0.734
+- EURCAD M15 buy: samples=5590 posterior=0.627 wilson=0.619 reliability=0.733
+- XAUUSD M15 buy: samples=7277 posterior=0.623 wilson=0.615 reliability=0.731
+- GBPCHF M15 sell: samples=6446 posterior=0.622 wilson=0.614 reliability=0.730
+- EURCAD H1 buy: samples=6986 posterior=0.622 wilson=0.614 reliability=0.730
+- GBPJPY H1 sell: samples=7249 posterior=0.618 wilson=0.610 reliability=0.727
+- GBPAUD M5 sell: samples=6311 posterior=0.615 wilson=0.606 reliability=0.724
+
+## Cobertura Por Ativo/Timeframe
+
+- AUDCAD H1: 1
+- AUDCAD M5: 1
+- AUDCHF H1: 1
+- AUDCHF M15: 1
+- AUDCHF M5: 1
+- AUDJPY H1: 1
+- AUDJPY M5: 1
+- AUDNZD H1: 1
+- AUDNZD M15: 1
+- AUDNZD M5: 1
+- AUDSGD H1: 2
+- AUDSGD M5: 1
+- AUDUSD H1: 2
+- AUDUSD M15: 1
+- CADCHF H1: 1
+- CADCHF M15: 1
+- CADCHF M5: 1
+- CHFJPY M15: 1
+- EURAUD H1: 1
+- EURAUD M15: 1
+- EURAUD M5: 1
+- EURCAD H1: 1
+- EURCAD M15: 1
+- EURCAD M5: 1
+- EURCHF H1: 1
+- EURCHF M15: 1
+- EURCHF M5: 1
+- EURGBP H1: 1
+- EURGBP M15: 1
+- EURGBP M5: 1
+- EURNZD M15: 1
+- EURUSD H1: 1
+- GBPAUD H1: 1
+- GBPAUD M15: 1
+- GBPAUD M5: 1
+- GBPCAD H1: 2
+- GBPCAD M15: 1
+- GBPCHF H1: 1
+- GBPCHF M15: 1
+- GBPCHF M5: 1
+- GBPJPY H1: 1
+- GBPJPY M15: 1
+- GBPNZD M15: 1
+- GBPNZD M5: 1
+- NZDCAD H1: 1
+- NZDCAD M15: 1
+- NZDCAD M5: 1
+- NZDCHF H1: 1
+- NZDCHF M15: 1
+- NZDCHF M5: 1
+- NZDJPY H1: 1
+- NZDJPY M15: 1
+- NZDSGD H1: 1
+- NZDSGD M15: 1
+- NZDSGD M5: 1
+- NZDUSD H1: 1
+- USDCAD H1: 2
+- USDCAD M5: 1
+- USDCHF H1: 1
+- USDCHF M15: 1
+- USDCHF M5: 1
+- XAUUSD H1: 2
+- XAUUSD M15: 1

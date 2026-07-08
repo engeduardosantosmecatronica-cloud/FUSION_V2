@@ -1,0 +1,47 @@
+LEGENDA: [N->BUY/SELL] Fusion ajustado ficou neutro, IA indicou direcao; [BUY/SELL->N] Fusion ajustado direcional, IA neutra; [BUY->SELL]/[SELL->BUY] direcao oposta.
+
+ATIVO                         | M5                         | M15                        | M30                        | H1                         | H4                         | D1
+
+AUDCAD [SIGNAL_INVERSION_NEW] x | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (sell)                 | SELL (buy) [BUY->SELL]
+AUDCHF [SIGNAL_INVERSION_NEW] x | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | SELL (sell)                 | SELL (neutro) [N->SELL]
+AUDJPY [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (buy)                   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]
+AUDNOK *                      | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | SELL (sell)                 | NEUTRO (neutro)
+AUDNZD [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]
+AUDSEK [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | SELL (sell)                 | SELL (neutro) [N->SELL]
+AUDSGD *                      | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | NEUTRO (buy) [BUY->N]       | NEUTRO (neutro)
+AUDUSD [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | SELL (sell)                 | SELL (sell)
+BTCUSD [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (sell)                 | BUY (buy)                   | BUY (sell) [SELL->BUY]      | BUY (buy)                   | BUY (neutro) [N->BUY]
+CADCHF [REMOVE_INVERSION] x   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | SELL (buy) [BUY->SELL]      | NEUTRO (neutro)
+CADJPY [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (sell)                 | BUY (buy)                   | BUY (buy)                   | BUY (neutro) [N->BUY]
+CHFDKK *                      | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (neutro) [N->BUY]
+CHFJPY [SIGNAL_INVERSION_NEW] x | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | NEUTRO (neutro)             | NEUTRO (neutro)
+CHFNOK *                      | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (buy)                   | BUY (buy)                   | BUY (buy)                   | BUY (neutro) [N->BUY]
+ETHUSD [SIGNAL_INVERSION_NEW] x | SELL (sell)                 | SELL (sell)                 | BUY (buy)                   | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | BUY (neutro) [N->BUY]
+EURAUD [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (sell)                 | SELL (sell)
+EURCAD [REMOVE_INVERSION] x   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (sell)                 | SELL (neutro) [N->SELL]     | NEUTRO (sell) [SELL->N]     | NEUTRO (neutro)
+EURCHF [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (sell)                 | SELL (sell)                 | SELL (neutro) [N->SELL]
+EURGBP [SIGNAL_INVERSION] *   | NEUTRO (neutro)             | NEUTRO (neutro)             | NEUTRO (buy) [BUY->N]       | SELL (sell)                 | NEUTRO (buy) [BUY->N]       | NEUTRO (neutro)
+EURHKD [SIGNAL_INVERSION_NEW] x | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | SELL (neutro) [N->SELL]
+EURHUF [SIGNAL_INVERSION_NEW] x | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]
+EURJPY [SIGNAL_INVERSION_NEW] x | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | NEUTRO (neutro)             | NEUTRO (neutro)
+EURMXN [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (sell)                 | SELL (sell)                 | SELL (sell)                 | SELL (buy) [BUY->SELL]      | SELL (neutro) [N->SELL]
+EURNOK [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (sell)                 | SELL (sell)                 | NEUTRO (sell) [SELL->N]     | BUY (buy)
+EURNZD [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (sell)                 | SELL (neutro) [N->SELL]
+EURPLN *                      | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | BUY (sell) [SELL->BUY]      | NEUTRO (neutro)
+EURSEK [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (sell)                 | SELL (sell)                 | SELL (sell)                 | BUY (sell) [SELL->BUY]      | NEUTRO (neutro)
+EURUSD *                      | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (buy)                   | SELL (sell)                 | SELL (neutro) [N->SELL]
+GBPAUD [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | SELL (buy) [BUY->SELL]      | SELL (neutro) [N->SELL]
+GBPCAD [SIGNAL_INVERSION_NEW] x | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (buy) [BUY->SELL]      | NEUTRO (neutro)             | NEUTRO (neutro)
+GBPCHF [SIGNAL_INVERSION] *   | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]     | SELL (sell)                 | BUY (neutro) [N->BUY]       | BUY (buy)                   | NEUTRO (neutro)
+GBPJPY [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (buy)                   | BUY (buy)                   | BUY (buy)                   | BUY (neutro) [N->BUY]
+GBPNZD [SIGNAL_INVERSION_NEW] x | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | BUY (neutro) [N->BUY]
+GBPUSD *                      | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | SELL (sell)                 | NEUTRO (neutro)
+GOLD [SIGNAL_INVERSION] *     | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | NEUTRO (buy) [BUY->N]       | SELL (neutro) [N->SELL]     | SELL (neutro) [N->SELL]
+NZDCAD [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (buy)                   | BUY (sell) [SELL->BUY]      | BUY (neutro) [N->BUY]
+NZDCHF [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (neutro) [N->BUY]
+NZDJPY [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (buy)                   | BUY (neutro) [N->BUY]
+NZDSGD [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (buy)                   | BUY (buy)                   | BUY (neutro) [N->BUY]
+NZDUSD [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (buy)                   | BUY (neutro) [N->BUY]
+USDCAD [REMOVE_INVERSION] x   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (neutro) [N->BUY]
+USDCHF [SIGNAL_INVERSION_NEW] x | BUY (neutro) [N->BUY]       | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | BUY (sell) [SELL->BUY]      | NEUTRO (neutro)             | NEUTRO (neutro)
+USDJPY [SIGNAL_INVERSION] *   | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (neutro) [N->BUY]       | BUY (buy)                   | BUY (buy)                   | BUY (neutro) [N->BUY]

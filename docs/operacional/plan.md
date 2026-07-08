@@ -1,0 +1,2155 @@
+﻿# Plano de Refatoracao do BACKUP para FUSION_V2
+
+Atualizado em: 2026-05-17
+
+## Objetivo
+
+Consolidar no `fusion_refatorado` o melhor conteudo dos projetos antigos em `BACKUP`, criando uma base limpa para treino, validacao, decisao e execucao do FUSION_V2. Quando um arquivo do `BACKUP` tiver o codigo util extraido e validado, o original pode ser removido. Arquivos `__init__.py` do `BACKUP` podem ser removidos.
+
+## Ja Feito
+
+### Estrutura criada
+
+- `fusion_refatorado/README.md`
+- `fusion_refatorado/docs/backup_inventory.md`
+- `fusion_refatorado/docs/architecture.md`
+- `fusion_refatorado/docs/legacy_models_inventory.csv`
+- `fusion_refatorado/docs/extraction_manifest.md`
+- `fusion_refatorado/fusion_best/`
+
+### Modulos refatorados criados
+
+- `fusion_best/features.py`
+  - Features alpha/tecnicas reaproveitadas do ALPHAEDU.
+- `fusion_best/specialists.py`
+  - Especialistas ALPHAEDU: liquidez, microestrutura, momentum, regime, estrutura e volatilidade.
+- `fusion_best/omnis_experts.py`
+  - Experts OMNIS: trend, volatility, stats quant, zone mapper, pullback, exhaustion, flow, pattern trigger e risk guardian.
+- `fusion_best/dataset_builder.py`
+  - Builder de dataset para treino com flags `include_specialists` e `include_omnis_experts`.
+- `fusion_best/training.py`
+  - Utilitarios de treino.
+- `fusion_best/validation.py`
+  - Feature importance, leakage/group checks, ablation e comparacoes.
+- `fusion_best/feature_selection.py`
+  - Selecao final/top features e aplicacao de parametros.
+- `fusion_best/expression_catalog.py`
+  - Catalogo de expressoes Alpha158/forex.
+- `fusion_best/model_registry.py`
+  - Registro/inventario de modelos legados.
+- `fusion_best/signals.py`
+  - Sinais normalizados e voto por confluencia.
+- `fusion_best/risk.py`
+  - Risk manager sem dependencia do MetaTrader5.
+- `fusion_best/backtesting.py`
+  - Backtest simples por probabilidade/confidence/custo.
+- `fusion_best/legacy_inventory.py`
+  - Inventario de artefatos/modelos legados.
+- `fusion_best/visualization.py`
+  - Plotagem de sinais.
+- `fusion_best/decision.py`
+  - Em andamento: confluencia, SL/TP, filtro de melhoria de preco, safe predict e voto ponderado por timeframe.
+- `fusion_best/expert_training.py`
+  - Specs, targets e datasets para treinar 9 experts OMNIS separadamente.
+- `fusion_best/market_context.py`
+  - Contexto operacional: confidence engine, regime ADX, orderflow, volatilidade, S/R, insidebar, pullback MTF e divergencias.
+- `fusion_best/execution_features.py`
+  - Pipeline de features para execucao, candle/reversal/risk operacional, filtro M15 e cache TTL.
+- `fusion_best/model_io.py`
+  - Carregamento de modelo + features + metadata, predict seguro e ensemble ponderado.
+- `fusion_best/meta_learning.py`
+  - Dataset/target de meta decisao para operar/bloquear.
+- `fusion_best/data_io.py`
+  - Loader OHLCV normalizado para CSV/Parquet e contrato de provider.
+- `fusion_best/trading_ops.py`
+  - Adaptador de ordem, payload, SL/TP por pontos, trailing fixo/ATR, logging CSV e Telegram opcional.
+- `fusion_best/runtime_config.py`
+  - Configuracao operacional limpa do OMNIS sem dependencia de MT5 e sem copiar segredos do backup.
+- `fusion_best/runtime.py`
+  - Ciclo de runtime com hooks injetaveis, logging UTF-8 e notificacao opcional.
+- `fusion_best/project_audit.py`
+  - Auditoria de imports, geracao de arvore do projeto e resumo de diagnostico MT5 sem executar ordens.
+- `fusion_best/expert_contracts.py`
+  - Contrato padronizado de expert com cache, validacao, estatisticas e resultado sinal/confianca/features.
+- `fusion_best/legacy_model_inventory.py`
+  - Flatten/ranking de `training_summary.json` e selecao do melhor modelo por expert.
+- `fusion_best/extended_experts.py`
+  - Experts extras do OMNIS_Copia: Fibonacci, Ichimoku, volume, gaps causais, HVN/LVN, stochastic, sazonalidade, correlacao, momentum, swing causal, microestrutura leve/avancada, volatilidade avancada, candles extras e anomalias.
+
+### BACKUP ja consumido e removido
+
+- `BACKUP/ALPHAEDU`
+  - Revisado, extraido e removido por completo.
+  - Incluiu especialistas, validacoes, selecao de features, orquestracao, operadores e expressoes.
+- `BACKUP/OMNIS_v1_20260304_134715/core/experts`
+  - Revisado, extraido para `omnis_experts.py`, validado em parquet real e removido.
+- `BACKUP/OMNIS_v1_20260304_134715/core/decision` e `core/risk`
+  - Decision/risk extraidos, validados e arquivos `.py` consumidos removidos.
+- `BACKUP/OMNIS_v1_20260304_134715/training`
+  - Scripts de treino por objetivo extraidos para `expert_training.py`, validados e removidos.
+- `BACKUP/OMNIS_v1_20260304_134715/core/brain`, `core/confirmation`, `core/context`, `core/divergence`, `core/filters`, `core/market`
+  - Contexto, filtros, regime e divergencia extraidos para `market_context.py` e removidos.
+- `BACKUP/OMNIS_v1_20260304_134715/core/execution` e `features`
+  - Features de execucao, filtro de entrada e cache extraidos para `execution_features.py` e removidos.
+- `BACKUP/OMNIS_v1_20260304_134715/models`, `utils` e `data/loader`
+  - Model IO, meta learner, data IO, Fibonacci, alinhamento e consistencia extraidos e removidos.
+- `BACKUP/OMNIS_v1_20260304_134715/config`, `main.py`, scripts auxiliares e documentos operacionais
+  - Config runtime, lifecycle, auditoria de imports, arvore de projeto, diagnostico MT5 e regras operacionais extraidos.
+  - Tokens/credenciais do `.env` e `settings.py` nao foram copiados; a nova configuracao usa variaveis de ambiente.
+  - Arquivos consumidos removidos; restou apenas `data/historical` com dados brutos de treino.
+- `BACKUP/OMNIS_Copia/modelos_trading/experts` (parte)
+  - 16 arquivos de experts extras/revisados extraidos ou descartados como placeholder para `extended_experts.py`.
+  - Arquivos consumidos removidos apos validacao.
+- `BACKUP/OMNIS_Copia/modelos_trading/experts/base_expert.py`, `risk_guardian.py`, `pattern_trigger.py`, `pullback_hunter.py`, `zone_mapper.py`
+  - Contrato de expert e gate operacional extraidos; duplicatas/versoes com risco de leakage revisadas e removidas.
+- `BACKUP/OMNIS_Copia/modelos_trading/experts/exhaustion_detector.py`, `flow_aggressor.py`, `stats_quant.py`, `trend_master.py`
+  - Exaustao e regime estatistico rolling extraidos; fluxo/tendencia revisados como duplicatas ou com trechos unsafe e removidos.
+- `BACKUP/OMNIS_Copia/modelos_trading/models` e `predictor.py`
+  - 115 modelos inventariados; 23 melhores por expert copiados para `fusion_refatorado/models/omnis_copia_best`; predictor legado convertido para loader seguro.
+- `BACKUP/OMNIS_Copia/backtest_results`, `model_backtest_results`, `trading_strategies` e scripts de backtest/estrategia
+  - 498 linhas de backtest de features extraidas para docs.
+  - 690 linhas de backtest walk-forward de modelos extraidas para docs.
+  - Top models de estrategia preservados; ensemble dinamico por AUC convertido para `LegacyAucEnsemble`.
+  - Consolidacao de relatorios de feature analysis reaproveitada em `backtest_reports.py`.
+- `BACKUP/OMNIS_Copia/utils`, `data/loader`, `train_models.py`, `main.py`, `consolidar_projeto.py`, `gerar_arvore.py`, `estrutura_limpa.txt`, `.env`
+  - Indicadores tecnicos completos preservados em `technical_indicators.py`.
+  - Filtros de entrada, Fibonacci, insidebar e alinhamento preservados em `trade_filters.py`.
+  - Loader multiativo preservado em `model_io.py`.
+  - Loader CSV MT5 e inventario de qualidade preservados em `data_io.py`.
+  - Presets de treino legado preservados em `expert_training.py`.
+  - Ciclo runtime/projeto audit reforcados em `runtime.py` e `project_audit.py`.
+  - `.env` revisado e descartado por conter credenciais; nenhum segredo foi migrado.
+- `BACKUP/OMNIS_Copia/data/historical` e `data/prepared`
+  - Inventariados em CSV; dados ainda mantidos para decisao de migracao/compactacao.
+- `BACKUP/BUILD_MODELS`
+  - Modelos Genesis globais e 21 modelos por shard copiados para `fusion_refatorado/models/build_models`.
+  - Inventario de 42 artefatos (modelos + shards parquet) salvo em docs.
+  - Pipeline Genesis extraido: labels automaticos, dataset MTF com shift de seguranca, thresholds de probabilidade, RobustScaler e resumo de retorno.
+  - Engenharia extraida: resample OHLCV, alphas Genesis, categoria de shard, preparo Qlib CSV/bin, ranking IC, OOS por shard e MAE/MFE.
+  - YAML Qlib preservado em `fusion_refatorado/config/build_models_qlib_task_config.yaml`.
+  - Shards parquet grandes permanecem pendentes para migracao/compactacao.
+- `BACKUP/FEATURE_STORE`
+  - Modelo Genesis v1 copiado para `fusion_refatorado/models/feature_store`.
+  - Rankings e resultados CSV copiados para `fusion_refatorado/docs`.
+  - Feature importance global, baseline LightGBM, backtests pessimista/ultra-realista, ponte live e spread real absorvidos em `training.py`, `data_io.py` e `backtesting.py`.
+- `BACKUP/FOREX`
+  - Dataset EURUSD M5 e binarios Qlib copiados para `fusion_refatorado/data/forex_m5_eurusd`.
+  - Inventario salvo em `fusion_refatorado/docs/forex_m5_eurusd_inventory.csv`.
+  - Scripts de resample/teste Qlib revisados e cobertos por `resample_ohlcv` e `qlib_integration.py`.
+- `BACKUP/QLIB`
+  - Modelos `modelo_alpha158_sucesso.pkl` e `modelo_balanceado_lightgbm.pkl` copiados para `fusion_refatorado/models/qlib`.
+  - Treino Alpha158, treino balanceado, diagnostico de probabilidade, sinal por threshold e backtest long-only preservados em `qlib_integration.py` e `backtesting.py`.
+- `BACKUP/DATA_HUB`
+  - 328 modelos/metadados copiados para `fusion_refatorado/models/data_hub`.
+  - Schema Genesis e relatorios CSV/TXT pequenos copiados para `fusion_refatorado/docs`.
+  - Inventario de dados grandes salvo em `fusion_refatorado/docs/data_hub_data_inventory.csv` com 1405 arquivos e ~27.9 GB.
+  - Logica de Fusion MTF, treino regressivo por IC, wrapper de modelo e limpeza de features preservada em `data_io.py`, `training.py` e `model_io.py`.
+  - Dados/parquets grandes permanecem pendentes para migracao/compactacao.
+- `BACKUP/GENESIS_ALPHA`
+  - Modelo global, scaler, config Qlib, MLflow runs e qlib_data copiados para `fusion_refatorado/models/genesis_alpha` e `fusion_refatorado/data/genesis_alpha`.
+  - Inventario salvo em `fusion_refatorado/docs/genesis_alpha_inventory.csv`.
+  - Helpers de port config Qlib e resumo de pred/label preservados em `qlib_integration.py`.
+  - `.env` revisado e descartado por ser configuracao local.
+- `BACKUP/NEXUS`
+  - Modelo `alpha158_best.joblib`, qlib_data, raw data e equity curve copiados para `fusion_refatorado/models/nexus`, `fusion_refatorado/data/nexus` e docs.
+  - Motor Alpha158 live completo (144 features) extraido para `fusion_best/alpha158_live.py`.
+  - Backtest/risk/registry revisados; partes superiores ja cobertas por `backtesting.py`, `risk.py`, `model_io.py` e `model_registry.py`.
+- `BACKUP/NEXUS_backup`
+  - Consenso por expert/regime, consenso hibrido regra+ML, confianca hierarquica, predictor por simbolo/global, blender por regime e safe predict extraidos para `fusion_best/nexus_ensemble.py`.
+  - Feature engine tecnico, candles, orderflow, volume profile e book summary extraidos para `fusion_best/nexus_features.py`.
+  - `data/models` copiado integralmente para `fusion_refatorado/models/nexus_backup` com 285 arquivos e ~8.04 GB.
+  - `data/features` e `data/raw` copiados para `fusion_refatorado/data/nexus_backup` com 164 arquivos e ~2.14 GB.
+  - Inventarios salvos em `fusion_refatorado/docs/nexus_backup_model_inventory.csv` e `fusion_refatorado/docs/nexus_backup_data_inventory.csv`.
+- `BACKUP/PROJETO_QLIB_FINAL`
+  - Conversor manual parquet/OHLCV para Qlib binario, alphas elite, ranking IC e treino RandomForest EURUSD M5 extraidos para `qlib_integration.py` e `training.py`.
+  - Modelo `omnis_model_eurusd_m5.pkl` copiado para `fusion_refatorado/models/projeto_qlib_final`.
+  - `data/EURUSD.parquet` e `data_qlib` copiados para `fusion_refatorado/data/projeto_qlib_final` com 701 arquivos e ~1.27 GB.
+  - Inventarios salvos em `fusion_refatorado/docs/projeto_qlib_final_data_inventory.csv` e `fusion_refatorado/docs/projeto_qlib_final_model_inventory.csv`.
+- `BACKUP/OMNIS`
+  - Threshold adaptativo, decisao hierarquica, funil de filtros, SL/TP ciente de spread, trailing por ativo e calculo Genesis por timestamp extraidos para `decision.py`, `trading_ops.py` e `data_io.py`.
+  - `DADOS` copiado para `fusion_refatorado/data/omnis_legacy` com 156 CSVs e ~2.14 GB.
+  - `EXECUÇÃO/models` copiado para `fusion_refatorado/models/omnis_legacy` com 655 arquivos e ~133 MB.
+  - `TREINAMENTO/mlruns` copiado para `fusion_refatorado/models/omnis_legacy_mlruns`.
+  - Configs YAML copiadas para `fusion_refatorado/config/omnis_legacy`.
+  - `.env` e `.env.bybit` revisados e descartados por conterem configuracao/segredos locais.
+- `BACKUP/omnis_backup_`
+  - Target por ATR, metatarget de decisao, treino meta LightGBM e preparo tolerante de features obrigatorias extraidos para `training.py`.
+  - 123 CSVs historicos copiados para `fusion_refatorado/data/omnis_backup` (~379 MB).
+  - 97 arquivos de modelo/metadados copiados para `fusion_refatorado/models/omnis_backup` (~62 MB).
+  - Documentos de logica/status e config preservados em `fusion_refatorado/docs` e `fusion_refatorado/config`.
+  - `.env` e `.env copy` revisados e descartados.
+- Dados massivos remanescentes
+  - Movidos, nao copiados, para `fusion_refatorado/data/backup_migrated`.
+  - `BUILD_MODELS/shards_v4`: 21 arquivos / ~4.22 GB.
+  - `DATA_HUB`: 1.406 arquivos / ~31.25 GB.
+  - `data_csv`: 4.830 arquivos / ~40.47 GB.
+  - `OMNIS_Copia/data`: 162 arquivos / ~441 MB.
+  - `OMNIS_v1_20260304_134715/data`: 123 arquivos / ~379 MB.
+  - Inventario consolidado salvo em `fusion_refatorado/docs/backup_migrated_data_inventory.csv`.
+- Scripts raiz restantes do `BACKUP`
+  - `minerador_tiingo.py`: reaproveitados URL Tiingo FX, normalizacao OHLCV e merge sem duplicatas; token hardcoded descartado.
+  - `ver_lucro.py`: reaproveitados campos Qlib scalper 15min, label de retorno futuro e avaliacao de retorno por predição.
+- Arquivos `__init__.py` encontrados no `BACKUP`
+  - Removidos conforme autorizacao.
+
+### Validacoes feitas
+
+- `python -m compileall fusion_refatorado\fusion_best` passou apos os ultimos lotes.
+- Imports de `RuntimeConfig`, helpers de ativo/SL/TP/ATR, `inventory_historical_data`, `generate_tree` e `run_runtime_loop` passaram.
+- `inventory_historical_data` encontrou 123 arquivos historicos no `OMNIS_v1`, cerca de 379 MB.
+- `build_extended_expert_features` rodou em parquet real e gerou 700 linhas x 65 features.
+- `build_training_dataset(..., include_omnis_experts=True, include_extended_experts=True)` gerou 623 linhas x 401 colunas.
+- Apos complemento de microestrutura/volatilidade/candles/anomalias, `build_extended_expert_features` gerou 700 x 177 e o dataset completo 623 x 517.
+- `ExpertContract` e `TradeRiskGate` importaram via `fusion_best`; gate aprovou trade simulado valido.
+- Apos exaustao e quant rolling, `build_extended_expert_features` gerou 700 x 226 e o dataset completo 623 x 566.
+- Inventario OMNIS_Copia gerou 115 linhas; ranking preservou 23 modelos. Melhor carregou como `RandomForestClassifier` com AUC 0.642016.
+- Backtests OMNIS_Copia geraram `omnis_copia_expert_backtest_features.csv` com 498 linhas, `omnis_copia_model_backtest_results.csv` com 690 linhas e `omnis_copia_strategy_top_models.csv` com 15 modelos.
+- Imports de `flatten_model_backtest_results`, `rank_model_backtests`, `LegacyAucEnsemble` e `top_model_paths_from_manifest` passaram.
+- Inventario OMNIS_Copia `data/historical`: 80 arquivos, ~221 MB; `data/prepared`: 81 arquivos, ~220 MB.
+- Inventario de qualidade encontrou 1 divergencia: arquivo `ETHUSD_H1.csv` dentro da pasta `historical/eurcad`.
+- Smoke test dos filtros/indicadores/loader multiativo passou.
+- BUILD_MODELS: 24 arquivos de modelo preservados em `fusion_refatorado/models/build_models`; smoke tests Genesis/Qlib/backtest passaram.
+- FEATURE_STORE: modelo/rankings preservados; smoke test de live features e backtest com spread real passou.
+- FOREX: 11 arquivos copiados, ~40 MB, dataset EURUSD M5 pronto para Qlib.
+- QLIB: 2 modelos preservados; smoke tests Alpha158/probabilidade/backtest passaram.
+- DATA_HUB: modelos e relatorios preservados; smoke test de limpeza Fusion passou.
+- GENESIS_ALPHA: 725 arquivos copiados, ~216 MB; smoke tests Qlib/MLflow helpers passaram.
+- NEXUS: 14 arquivos de modelo/dados copiados, ~81 MB; Alpha158 live gerou 100 x 144 em teste sintetico.
+- NEXUS_backup: modelos/features/raw copiados e conferidos; smoke test de consenso, hybrid consensus, feature engine, candles e order book passou.
+- PROJETO_QLIB_FINAL: modelo/dados Qlib copiados; smoke test de alphas elite, ranking IC e treino RandomForest passou.
+- OMNIS legacy: dados/modelos/configs copiados; smoke test de threshold, decisao, funil operacional, SL/TP e Genesis signal passou.
+- omnis_backup_: dados/modelos/docs/config copiados; smoke test de target ATR, meta decision e preparo de features passou.
+- Migracao final: dados grandes movidos e conferidos; scripts raiz absorvidos e validados.
+- `build_omnis_expert_features` rodou em `data/parquet/D1/EURMXN.parquet`.
+  - Resultado: 623 linhas x 141 features OMNIS.
+- `build_training_dataset(..., include_omnis_experts=True)` rodou no mesmo parquet.
+  - Resultado: 623 linhas x 326 colunas.
+- O gargalo de importacao via `fusion_best` foi corrigido com exports preguicosos no `__init__.py`.
+
+## Em Andamento
+
+### Lote OMNIS decision/risk
+
+Arquivos fonte consumidos:
+
+- `BACKUP/OMNIS_v1_20260304_134715/core/decision/confluence_scorer.py`
+- `BACKUP/OMNIS_v1_20260304_134715/core/decision/decision_engine.py`
+- `BACKUP/OMNIS_v1_20260304_134715/core/risk/risk_manager.py`
+- `BACKUP/OMNIS_v1_20260304_134715/core/risk/sl_tp_engine.py`
+
+Conteudo ja extraido parcialmente para `fusion_best/decision.py` e `fusion_best/risk.py`:
+
+- Predicao tolerante a shape/nome de features.
+- Alinhamento de features esperadas.
+- Voto ponderado por timeframe.
+- Veto por risk score.
+- Filtro de melhoria de preco.
+- Confluencia por Fibonacci/SR/EMA200/VWAP.
+- SL/TP fixo ou dinamico por ATR.
+- Calculo de lote, EV, RR e bloqueios basicos de risco.
+
+Validado:
+
+- Import rapido via `fusion_best`.
+- Teste integrado de `TradingSignal`, `weighted_timeframe_vote`, `calculate_sl_tp` e `RiskManager`.
+- Dataset com `include_omnis_experts=True` segue gerando 623 linhas x 326 colunas no parquet `EURMXN`.
+
+Pendente:
+
+- Nenhum. Os quatro arquivos originais deste lote foram removidos apos validacao.
+
+## Proximos Lotes
+
+1. BACKUP concluido.
+2. Presets operacionais criados em `fusion_refatorado/pipelines`:
+   - `registry_inventory.py`
+   - `train_single_model.py`
+   - `train_experts.py`
+   - `train_fusion_ensemble.py`
+3. Inventarios consolidados gerados em `fusion_refatorado/docs/registry`.
+4. Dry-run do modelo unico validado em `EURUSD_M5.csv`:
+   - 800 linhas brutas.
+   - Dataset final: 680 linhas x 183 colunas.
+   - Relatorio: `fusion_refatorado/models/fusion_single/EURUSD/M5/dry_run_report.json`.
+5. Dry-run de experts validado em `EURUSD_M5.csv`:
+   - `trend`, `volatility`, `candles`, `orderflow`, `risk`.
+   - Relatorio: `fusion_refatorado/models/fusion_experts/EURUSD/M5/dry_run_report.json`.
+6. Treino real completo em EURUSD M5 concluido:
+   - Baseline single: accuracy 0.700953, F1 macro 0.401860, 177 features, 80.186 amostras treino / 20.047 teste.
+   - Experts treinaveis consolidados: `trend`, `volatility`, `candles`, `orderflow`, `risk`, `sr`, `reversal`, `pullback`, `quant`.
+   - Melhores experts por F1 macro: `orderflow` 0.638204, `risk` 0.617587, `reversal` 0.589587, `sr` 0.514932, `quant` 0.456256.
+   - Demais experts: `pullback` 0.428850, `volatility` 0.423165, `trend` 0.396183, `candles` 0.379247.
+   - Entrada: `fusion_refatorado/data/omnis_backup/dados/dados_historicos/eurusd/EURUSD_M5.csv`.
+   - Saida: `fusion_refatorado/models/fusion_experts/EURUSD/M5` e `fusion_refatorado/models/fusion_single/EURUSD/M5`.
+   - Relatorios: `fusion_refatorado/models/fusion_experts/EURUSD/M5/training_report.json` e `fusion_refatorado/models/fusion_single/EURUSD/M5/meta.json`.
+7. Preset de ensemble criado/atualizado com priorizacao por metricas reais:
+   - `fusion_refatorado/models/fusion_ensemble/ensemble_config.json`
+   - `fusion_refatorado/models/fusion_ensemble/ensemble_config.candidates.csv`
+   - Top inicial: `orderflow`, `risk`, `reversal`, `sr`, `quant`, `pullback`, `volatility`, baseline single, `trend`, `candles`.
+8. Backtest/calibracao EURUSD M5 concluido:
+   - Script criado: `fusion_refatorado/pipelines/backtest_fusion_experts.py`.
+   - Correcao aplicada: `normalize_ohlcv_columns` ficou idempotente e preserva timestamps M5 em dupla passagem.
+   - Relatorios gerados em `fusion_refatorado/reports/fusion_backtests/EURUSD/M5`.
+   - Fatia OOS: 20.041 linhas; trades simulados: 16.665.
+   - Pesos calibrados aplicados no ensemble:
+     - `trend`: 0.717155, 229 trades, winrate 1.0000, retorno total 0.516152.
+     - `sr`: 0.137683, 1.249 trades, winrate 0.6213, retorno total 0.480035.
+     - `quant`: 0.092277, 3.494 trades, winrate 0.5644, retorno total 0.977546.
+     - `pullback`: 0.052885, 648 trades, winrate 0.5309, retorno total 0.084104.
+   - Pesos zerados nesta fatia: `candles`, `orderflow`, `reversal`; `risk` e `volatility` mantidos como contexto/gate.
+   - `train_fusion_ensemble.py` agora aceita `--calibration-report`.
+9. Walk-forward temporal EURUSD M5 concluido:
+   - Script criado: `fusion_refatorado/pipelines/walkforward_fusion_experts.py`.
+   - Treino nos primeiros 80% e teste nos 20% finais, sem sobrescrever os modelos principais.
+   - Modelos salvos em `fusion_refatorado/models/fusion_walkforward/EURUSD/M5`.
+   - Relatorios salvos em `fusion_refatorado/reports/fusion_walkforward/EURUSD/M5`.
+   - Modo `NORMAL` e `INVERT` testado para experts direcionais.
+   - Resultado limpo: apenas `trend` invertido ficou positivo.
+     - `trend` INVERT: 52 trades, winrate 0.5962, retorno total 0.012311, peso 1.0 no ensemble walk-forward.
+   - Todos os demais experts direcionais ficaram com peso 0 no walk-forward EURUSD M5.
+   - Ensemble walk-forward separado salvo em `fusion_refatorado/models/fusion_ensemble/ensemble_walkforward_config.json`.
+10. Execucao em lote M5 para os simbolos solicitados concluida:
+   - Lista deduplicada: 23 simbolos (`CADCHF` foi informado duas vezes).
+   - Fonte usada: `data/parquet/M5/<SYMBOL>.parquet`.
+   - Pipeline executado por simbolo: treino dos 9 experts, backtest/calibracao operacional, walk-forward temporal e ensemble walk-forward por simbolo.
+   - Orquestrador criado: `fusion_refatorado/pipelines/run_symbol_batch.py`.
+   - Otimizacao aplicada: matriz OMNIS de features agora e calculada uma vez por simbolo e reaproveitada nos 9 experts.
+   - Relatorio consolidado: `fusion_refatorado/reports/batch_runs/m5_requested_symbols_consolidated.csv`.
+   - Ultimo batch completo: `fusion_refatorado/reports/batch_runs/20260518_123801_M5/batch_summary.csv`.
+   - Ensembles walk-forward por simbolo salvos em `fusion_refatorado/models/fusion_ensemble/*_M5_ensemble_walkforward_config.json`.
+   - Backtest e walk-forward existem para todos os 23 simbolos.
+   - Walk-forward com peso positivo apos exigir retorno total > 0 em 11/23 simbolos:
+     - `EURUSD`, `USDJPY`, `GBPJPY`, `AUDUSD`, `USDCAD`, `EURJPY`, `EURCHF`, `EURCAD`, `AUDJPY`, `EURAUD`, `CHFJPY`.
+   - Simbolos sem expert positivo no walk-forward M5 atual:
+     - `GBPUSD`, `USDCHF`, `EURGBP`, `NZDUSD`, `AUDCAD`, `AUDCHF`, `GBPCHF`, `CADCHF`, `GBPAUD`, `NZDCAD`, `AUDNZD`, `EURNZD`.
+11. Selecao conservadora de candidatos M5 concluida:
+   - Script criado: `fusion_refatorado/pipelines/select_production_candidates.py`.
+   - Criterios usados: minimo 100 trades, winrate >= 0.52, retorno total >= 0.01, drawdown maximo >= -0.15.
+   - Resultado: 7 aprovados, 4 em observacao, 12 rejeitados.
+   - Aprovados para staging:
+     - `EURAUD` M5: `trend` INVERT, 251 trades, winrate 0.5418, retorno 0.228907.
+     - `AUDJPY` M5: `trend` NORMAL, 637 trades, winrate 0.5432, retorno 0.195478.
+     - `CHFJPY` M5: `trend` NORMAL, 301 trades, winrate 0.6213, retorno 0.132852.
+     - `AUDUSD` M5: `trend` INVERT, 116 trades, winrate 0.5345, retorno 0.073785.
+     - `USDJPY` M5: `trend` NORMAL, 191 trades, winrate 0.5602, retorno 0.047776.
+     - `EURCAD` M5: `trend` NORMAL, 359 trades, winrate 0.5376, retorno 0.029939.
+     - `GBPJPY` M5: `trend` NORMAL, 131 trades, winrate 0.5954, retorno 0.025162.
+   - Relatorios:
+     - `fusion_refatorado/reports/production_selection/M5_production_candidates.csv`
+     - `fusion_refatorado/reports/production_selection/M5_production_candidates.json`
+   - Registry de staging criado:
+     - `fusion_refatorado/models/production_registry/M5_approved_ensembles.csv`
+     - `fusion_refatorado/models/production_registry/M5_approved_ensembles.json`
+12. Loop de trailing separado do ciclo principal do sistema:
+   - `run_fusion.py` executa `fusion.main.FusionV2`; a alteracao foi aplicada nesse runtime ativo.
+   - `fusion/main.py` agora guarda a thread `FusionTrailingLoop`, usa evento de parada e encerra o trailing antes do shutdown do MT5.
+   - O intervalo do trailing vem de `config/fusion_config.yaml` em `trailing.check_interval`; valor atual: 1 segundo.
+   - `fusion/execution/trailing.py` agora aceita `stop_event` e usa espera interrompivel, mantendo o trailing independente do loop de sinais.
+   - Validacao: `python -m compileall fusion` executado com sucesso.
+13. Otimizacao de trailing por ativo/timeframe M5 concluida para os 7 candidatos aprovados:
+   - Script criado: `fusion_refatorado/pipelines/optimize_trailing_grid.py`.
+   - Entradas usadas:
+     - Trades walk-forward: `fusion_refatorado/reports/fusion_walkforward/<SYMBOL>/M5/walkforward_trades.csv`.
+     - Pesos walk-forward: `fusion_refatorado/reports/fusion_walkforward/<SYMBOL>/M5/walkforward_weights.json`.
+     - TP/SL por ativo/timeframe: `features_backteste_ativo_timeframe.csv`.
+   - Regra padrao: otimizar apenas experts com peso relevante (`calibrated_weight >= 0.25`) para evitar que experts residuais com muitos trades dominem o trailing.
+   - Relatorio final:
+     - `fusion_refatorado/reports/trailing_optimization/M5/M5_trailing_best.csv`
+     - `fusion_refatorado/reports/trailing_optimization/M5/M5_trailing_best.json`
+   - Grids por ativo:
+     - `fusion_refatorado/reports/trailing_optimization/M5/*_M5_trailing_grid.csv`
+   - Registry operacional criado:
+     - `fusion_refatorado/models/production_registry/trailing_optimized_M5.json`
+   - Presets aprovados no registry:
+     - `EURAUD` M5: ativacao 300 pontos, distancia 30 pontos.
+     - `AUDJPY` M5: ativacao 200 pontos, distancia 30 pontos.
+     - `AUDUSD` M5: ativacao 150 pontos, distancia 120 pontos.
+     - `USDJPY` M5: ativacao 80 pontos, distancia 30 pontos.
+     - `EURCAD` M5: ativacao 120 pontos, distancia 30 pontos.
+     - `GBPJPY` M5: ativacao 300 pontos, distancia 30 pontos.
+   - `CHFJPY` M5 foi testado, mas ficou com retorno total negativo na grade de trailing; nao foi promovido para o registry de trailing.
+   - `fusion/execution/trailing.py` agora carrega automaticamente `trailing_optimized_M5.json` e aplica preset por simbolo/timeframe quando o magic permite identificar `M5`.
+14. Backup pre-integracao criado antes de alterar a carga dos novos modelos no runtime atual:
+   - Pasta: `_archive/backups/pre_model_integration_20260519_101004`.
+   - Documentacao: `_archive/backups/pre_model_integration_20260519_101004/BACKUP_README.md`.
+   - Manifest com hashes: `_archive/backups/pre_model_integration_20260519_101004/BACKUP_MANIFEST.csv`.
+   - Conteudo preservado: `run_fusion.py`, `fusion/`, `config/`, `plan.md`, registries de producao/staging e relatorios de selecao/trailing.
+   - Objetivo: permitir reversao manual antes da integracao dos novos modelos/ensembles ao sistema atual.
+15. Integracao dos novos modelos M5 aprovados ao runtime atual:
+   - Modulo criado: `fusion/approved_ensembles.py`.
+   - Runtime alterado: `fusion/main.py`.
+   - Configuracao alterada: `config/fusion_config.yaml`.
+   - Documentacao criada: `docs/model_integration_m5.md`.
+   - Nova rota operacional: `strategy5`, separada das strategies antigas, com `magic_base: 203000`.
+   - Magic esperado para M5: `203005`.
+   - Registry consumido: `fusion_refatorado/models/production_registry/M5_approved_ensembles.json`.
+   - TP/SL consumido: `features_backteste_ativo_timeframe.csv`.
+   - Features em runtime: `fusion_refatorado.fusion_best.expert_training.build_expert_feature_frame`.
+   - Criterios de carga do ensemble em runtime:
+     - `min_member_weight: 0.25`
+     - `min_score: 0.25`
+     - `bars: 1200`
+   - Ativos carregados no teste de loader: `AUDJPY`, `AUDUSD`, `CHFJPY`, `EURAUD`, `EURCAD`, `GBPJPY`, `USDJPY`.
+   - O sistema continua protegido por `trading.allow_new_orders: false`.
+   - Ajustes de robustez para teste/import sem MT5 local:
+     - `fusion/__init__.py` deixou de importar modulos pesados automaticamente.
+     - `fusion/data/pipeline.py`, `fusion/main.py`, `fusion/execution/trading.py`, `fusion/execution/trailing.py` e `fusion/approved_ensembles.py` tratam ausencia local do pacote `MetaTrader5`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion` passou.
+     - `MetaTrader5` importado com sucesso no venv do projeto (`5.0.5735`).
+     - Loader dos ensembles aprovados carregou 7 modelos.
+     - Instanciacao de `FusionV2` passou.
+     - `allow_new_orders` confirmado como `False`.
+     - `strategy5` confirmado como `True`.
+16. Inversao de sinal ajustada por estrategia:
+   - `config/fusion_config.yaml`: `signal.invert_signals` alterado para `false`.
+   - `strategy1.invert_signal`, `strategy2.invert_signal` e `strategy3.invert_signal` definidos como `true`.
+   - `fusion/main.py`: criado helper `_strategy_prediction()` para aplicar inversao no nivel da estrategia antes da entrada, filtros de feature, exposicao e execucao.
+   - `strategy4` e `strategy5` permanecem sem inversao.
+   - Validacao pelo venv:
+     - `strategy1`: BUY -> SELL, SELL -> BUY.
+     - `strategy2`: BUY -> SELL, SELL -> BUY.
+     - `strategy3`: BUY -> SELL, SELL -> BUY.
+     - `strategy4`: sem inversao.
+     - `strategy5`: sem inversao.
+     - `.\venv\Scripts\python.exe -m compileall fusion` passou.
+17. Strategy6 criada para entrada sem modelos:
+   - Configuracao adicionada em `config/fusion_config.yaml` como `strategies.strategy6`.
+   - Estado inicial: `enabled: false` por seguranca.
+   - Fonte de regras: `features_backteste_dinamica.csv`.
+   - Operacao: usa somente regras de feature/candle, sem `model.predict()`.
+   - Seleciona compra/venda por `score`, `win_rate` e `entradas`.
+   - Sem TP/SL:
+     - `use_feature_tp_sl: false`
+     - `tp_points: 0`
+     - `sl_points: 0`
+   - Runtime alterado em `fusion/main.py`:
+     - helper `_strategy6_feature_candidate()`;
+     - suporte ao tag `S6`;
+     - suporte ao magic base `203100`;
+     - strategy6 pode gerar sinal mesmo quando nao ha modelo carregado para o ativo/timeframe.
+   - Documentacao atualizada em `docs/model_integration_m5.md`.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+18. Refactor das estrategias para arquivos dedicados:
+   - Pacote criado: `fusion/strategies/`.
+   - Arquivos criados:
+     - `fusion/strategies/base.py`
+     - `fusion/strategies/estrategia_1.py`
+     - `fusion/strategies/estrategia_2.py`
+     - `fusion/strategies/estrategia_3.py`
+     - `fusion/strategies/estrategia_4.py`
+     - `fusion/strategies/estrategia_5.py`
+     - `fusion/strategies/estrategia_6.py`
+   - `fusion/main.py` agora instancia `strategy_runners` e chama `strategy.evaluate(...)` no loop principal.
+   - S6 expandida:
+     - seletores `enabled_experts`, `enabled_features`, `enabled_omnis_features`;
+     - captura features do sistema;
+     - captura features OMNIS de `fusion_refatorado`;
+     - avalia experts dos ensembles aprovados quando disponíveis;
+     - grava JSONL por loop em `logs/strategy6` quando `strategy6.enabled=true` e `log_each_loop=true`.
+   - Fluxo S6 corrigido: experts primeiro, regra `features_backteste_dinamica.csv` depois.
+     - `require_expert_confirmation: true`
+     - `expert_min_confidence: 0.55`
+     - `expert_min_score: 0.25`
+     - `min_expert_votes: 1`
+     - `require_feature_rule: true`
+     - Sem confirmacao dos experts, nao entra.
+     - Sem regra de feature no mesmo lado dos experts, nao entra.
+   - `config/fusion_config.yaml` atualizado com seletores e pasta de log da S6.
+   - Documentacao atualizada em `docs/model_integration_m5.md`.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+19. Expansao M5 para novos ativos solicitados:
+   - Ativos adicionados ao monitoramento em `config/fusion_config.yaml`:
+     - `GBPCAD`, `AUDSGD`, `CADJPY`, `GBPNZD`, `NZDCHF`, `NZDJPY`, `NZDSGD`.
+   - Todos tinham historico disponivel em `data/parquet/M5`.
+   - Pipeline executado por ativo:
+     - treino dos 9 experts;
+     - backtest/calibracao;
+     - walk-forward temporal;
+     - ensemble walk-forward.
+   - Batchs gerados em `fusion_refatorado/reports/batch_runs/`:
+     - `20260519_155631_M5` (`GBPCAD`; `AUDSGD` iniciou e foi retomado);
+     - `20260519_165706_M5` (`AUDSGD`);
+     - `20260519_172150_M5` (`CADJPY`);
+     - `20260519_181325_M5` (`GBPNZD`);
+     - `20260519_185400_M5` (`NZDCHF`);
+     - `20260519_193237_M5` (`NZDJPY`);
+     - `20260519_201548_M5` (`NZDSGD`).
+   - Selecao de producao M5 reprocessada com 30 simbolos FX/crosses, preservando os aprovados antigos e incluindo os novos.
+   - Registry atualizado:
+     - `fusion_refatorado/models/production_registry/M5_approved_ensembles.csv`
+     - `fusion_refatorado/models/production_registry/M5_approved_ensembles.json`
+   - Resultado consolidado:
+     - 9 aprovados;
+     - 5 em watchlist;
+     - 16 rejeitados.
+   - Novos aprovados:
+     - `NZDJPY` M5: `trend` NORMAL, 254 trades, winrate 0.7008, retorno total 0.224773, drawdown maximo -0.053573.
+     - `CADJPY` M5: `trend` NORMAL, 107 trades, winrate 0.6168, retorno total 0.046339, drawdown maximo -0.020690.
+   - Novo watchlist:
+     - `NZDSGD` M5: `sr` NORMAL, 6349 trades, winrate 0.5080, retorno total 0.444276, drawdown maximo -0.383303.
+   - Rejeitados por ausencia de expert positivo no walk-forward:
+     - `GBPCAD`, `AUDSGD`, `GBPNZD`, `NZDCHF`.
+   - Registry M5 aprovado agora carrega 9 modelos:
+     - `AUDJPY`, `AUDUSD`, `CADJPY`, `CHFJPY`, `EURAUD`, `EURCAD`, `GBPJPY`, `NZDJPY`, `USDJPY`.
+   - Trailing M5 otimizado para os novos aprovados:
+     - `CADJPY` promovido: ativacao 150 pontos, distancia 30 pontos, TP 500, SL 80.
+     - `NZDJPY` testado, mas nao promovido porque a grade ficou negativa.
+   - Registry `trailing_optimized_M5.json` recomposto com os 6 presets antigos mais `CADJPY`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion fusion_refatorado\pipelines` passou.
+     - `ApprovedEnsembleRegistry` carregou 9 ensembles aprovados.
+20. Magic numbers padronizados por estrategia/timeframe:
+   - `fusion/main.py`: removido o atalho antigo da `strategy1` para `TradingManager.MAGIC_BASE`; todas as estrategias agora passam pela mesma regra.
+   - `config/fusion_config.yaml`: `magic_base` agora representa o prefixo operacional:
+     - `strategy1`: `10`
+     - `strategy2`: `20`
+     - `strategy3`: `30`
+     - `strategy4`: `40`
+     - `strategy5`: `50`
+     - `strategy6`: `60`
+   - Magics novos:
+     - `strategy1`: M5=1005, M15=1015, M30=1030, H1=1060, H4=10240, D1=101440.
+     - `strategy2`: M5=2005, M15=2015, M30=2030, H1=2060, H4=20240, D1=201440.
+     - `strategy3`: M5=3005, M15=3015, M30=3030, H1=3060, H4=30240, D1=301440.
+     - `strategy4`: M5=4005, M15=4015, M30=4030, H1=4060, H4=40240, D1=401440.
+     - `strategy5`: M5=5005, M15=5015, M30=5030, H1=5060, H4=50240, D1=501440.
+     - `strategy6`: M5=6005, M15=6015, M30=6030, H1=6060, H4=60240, D1=601440.
+   - `legacy_magics` preenchido com os magics anteriores para que posicoes ja abertas no padrao antigo ainda sejam consideradas nos limites/trailing durante a transicao.
+   - Documentacao atualizada em `docs/model_integration_m5.md`.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+21. Filtro global de alinhamento de EMAs para entrada:
+   - Configuracao adicionada em `config/fusion_config.yaml`:
+     - `entry_filters.ema_alignment.enabled: true`
+     - periodos `[9, 21, 50]`
+     - BUY exige `EMA9 > EMA21 > EMA50`
+     - SELL exige `EMA9 < EMA21 < EMA50`
+   - `fusion/main.py`: criado `_strategy_ema_alignment_ok(...)`.
+   - O filtro foi colocado dentro de `_execute_strategy_order(...)`, antes do envio da ordem, entao vale para todas as estrategias `S1` a `S6`.
+   - Se as medias nao estiverem alinhadas, a ordem e bloqueada e o motivo aparece no log com os valores das EMAs.
+   - A checagem especifica antiga da `strategy4` foi substituida pelo filtro global.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+22. Stop loss padrao de 100 pontos para todas as estrategias:
+   - `config/fusion_config.yaml`: adicionado `risk.default_sl_points: 100`.
+   - `strategy1`, `strategy4` e `strategy6`: `sl_points: 100`.
+   - `strategy2`, `strategy3` e `strategy5`: `default_sl_points: 100` e `use_feature_sl: false`.
+   - `fusion/main.py`: `_execute_strategy_order(...)` agora inicializa `sl_points` em 100 para qualquer estrategia antes do envio da ordem.
+   - TP continua respeitando a regra anterior de cada estrategia; o SL fica padronizado em 100 pontos.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+23. Distancia minima entre EMAs no filtro de alinhamento:
+   - `config/fusion_config.yaml`: adicionado `entry_filters.ema_alignment.min_distance_points`.
+   - Distancias configuradas por timeframe:
+     - M5: EMA9-EMA21 >= 10 pontos; EMA21-EMA50 >= 15 pontos.
+     - M15: 15 / 20 pontos.
+     - M30: 20 / 30 pontos.
+     - H1: 30 / 40 pontos.
+     - H4: 50 / 70 pontos.
+     - D1: 80 / 100 pontos.
+   - `fusion/main.py`: `_strategy_ema_alignment_ok(...)` agora calcula distancia usando `symbol_info.point`.
+   - BUY mede `(EMA9 - EMA21)` e `(EMA21 - EMA50)` em pontos.
+   - SELL mede `(EMA21 - EMA9)` e `(EMA50 - EMA21)` em pontos.
+   - `fusion/main.py`: criado `_symbol_point_value(...)` para resolver o `point_value` correto por ativo.
+     - Primeiro consulta overrides em `data.point_values`.
+     - Depois usa `mt5.symbol_info(symbol).point`.
+     - Como fallback usa `trade_tick_size`.
+   - `config/fusion_config.yaml`: adicionado `data.point_values: {}` para permitir overrides por ativo/broker sem alterar codigo.
+   - Se a ordem das medias estiver correta mas a distancia for pequena, a ordem e bloqueada com log `bloqueada por distancia entre medias`.
+   - Ajuste adicional: o filtro agora usa o ultimo candle fechado (`use_closed_candle: true`) em vez do candle atual em formacao.
+   - `log_passed_filter: true` registra quando o filtro passa, incluindo EMA9/EMA21/EMA50, distancias calculadas, minimos exigidos e `point_value`.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+24. Dashboard progressivo e motivos por ativo/timeframe:
+   - `fusion/main.py`: removido `os.system('cls'/'clear')` do dashboard; o console agora imprime snapshots progressivos.
+   - Cada estado em `monitor_state` agora carrega `reason`.
+   - Motivos adicionados:
+     - `sem_modelo`
+     - `erro_dados`
+     - `modelo:neutro_threshold`
+     - `approved:<status>`
+     - mensagens das estrategias, por exemplo `S2:sem_feature`, `S3:exposure_block`, `S4:setup_block`, `S6:sem_confirmacao_expert`.
+     - bloqueios de execucao, por exemplo `ema_nao_alinhada` e `ordens_bloqueadas_config`.
+   - Strategies `S1` a `S6` agora propagam mensagens de falha retornadas pelo executor ou pelo filtro de entrada.
+   - Dashboard passou a mostrar coluna `MOTIVOS` com resumo por timeframe.
+   - `dashboard.show_reason_details: true` adicionado ao config para imprimir tambem os motivos completos abaixo da tabela.
+   - `_mt5_trading_allowed(...)` criado para bloquear tentativas de ordem quando o AutoTrading/terminal/conta nao permite trade.
+   - Quando o MT5 esta com AutoTrading desligado, o motivo vira `autotrading_desativado_terminal` antes de chamar `order_send`, evitando erros repetidos `AutoTrading disabled by client`.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+
+25. Correcao de cobertura `sem_modelo` e `sem_feature`:
+   - Gerada auditoria de cobertura em `reports/runtime_coverage_audit.csv`.
+   - `backteste_rapido.py` ajustado:
+     - `TIMEFRAMES` padrao agora inclui `H4` e `D1`.
+     - resumo vazio corrigido para nao quebrar quando um modelo nao gera entradas.
+     - fallback para `models_principal/<ativo>/<timeframe>` quando nao existir `models_expr`.
+   - Geradas features H4/D1 para os 23 ativos antigos que ja tinham material em `models_expr`.
+     - `features_backteste_dinamica.csv`: passou de 10.155 para 12.050 linhas.
+     - `features_backteste_ativo_timeframe.csv`: passou de 92 para 118 linhas.
+   - Criado `tools/train_runtime_models_from_parquet.py` para treinar modelos runtime a partir de `data/parquet` e salvar direto em `models_principal`, preservando modelos existentes.
+   - Treinados 42 modelos runtime para `AUDSGD`, `GBPCAD`, `GBPNZD`, `NZDCHF`, `NZDSGD`, `CADJPY` e `NZDJPY` em `M5`, `M15`, `M30`, `H1`, `H4` e `D1`.
+   - Relatorio do treino: `reports/runtime_model_training_from_parquet.csv`.
+   - Geradas features para `AUDSGD`, `GBPCAD`, `GBPNZD`, `NZDCHF`, `NZDSGD`, `CADJPY`, `NZDJPY` e `XAUUSD`.
+     - Lote analisado: 1.683.008 entradas e 8.415.040 simulacoes por alvo.
+     - `features_backteste_dinamica.csv`: passou de 12.050 para 16.745 linhas.
+     - `features_backteste_ativo_timeframe.csv`: passou de 118 para 159 linhas.
+   - Resultado da auditoria apos correcao:
+     - `sem_modelo`: 0.
+     - `ok`: 141 combinacoes ativo/timeframe.
+     - `sem_feature`: 27 combinacoes, quase todas `D1`, porque o backteste nao gerou sinais/entradas suficientes para formar regras.
+     - `sem_feature_aprovada`: 12 combinacoes; existem regras, mas nao passam pelos filtros atuais de entradas/winrate/score.
+   - Backup dos CSVs antes da expansao: `_archive/backups/feature_rules_before_h4d1_20260520`.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion backteste_rapido.py tools\train_runtime_models_from_parquet.py` passou.
+26. Filtro global de confirmacao por preco/candle:
+   - `config/fusion_config.yaml`: adicionado `entry_filters.candle_price_confirmation`.
+   - `fusion/main.py`: criado `_strategy_candle_price_confirmation_ok(...)` e ligado em `_execute_strategy_order(...)` antes do filtro de EMAs.
+   - Regra original para venda:
+     - preco atual abaixo da abertura do candle atual.
+     - se candle anterior for de baixa, preco atual abaixo do fechamento anterior.
+     - se candle anterior for de alta, preco atual abaixo da abertura anterior.
+   - Regra original para compra:
+     - preco atual acima da abertura do candle atual.
+     - se candle anterior for de alta, preco atual acima do fechamento anterior.
+     - se candle anterior for de baixa, preco atual acima da abertura anterior.
+   - Ajuste posterior para reduzir restricao:
+     - venda: preco atual abaixo da abertura do candle atual e candle anterior de baixa.
+     - compra: preco atual acima da abertura do candle atual e candle anterior de alta.
+   - Para BUY usa `ask`; para SELL usa `bid` quando `use_bid_ask: true`.
+   - Quando bloqueia, o motivo operacional vira `preco_candle_nao_confirmado` e o log mostra candle anterior, preco e niveis exigidos.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+27. Filtro de inclinacao das EMAs para evitar lateralizacao:
+   - `config/fusion_config.yaml`: adicionado `entry_filters.ema_alignment.slope_filter`.
+   - O filtro mede a inclinacao em pontos usando `point_value`, comparando a EMA atual com a EMA de `lookback_bars` candles atras.
+   - Configuracao inicial:
+     - `lookback_bars: 5`.
+     - M5: EMA9 >= 8 pontos, EMA21 >= 5 pontos, EMA50 >= 3 pontos.
+     - M15: 10 / 7 / 4 pontos.
+     - M30: 12 / 8 / 5 pontos.
+     - H1: 15 / 10 / 7 pontos.
+     - H4: 20 / 15 / 10 pontos.
+     - D1: 30 / 20 / 15 pontos.
+   - Para BUY, as EMAs precisam estar subindo pelo minimo configurado.
+   - Para SELL, as EMAs precisam estar caindo pelo minimo configurado.
+   - Quando bloqueia, o log mostra `bloqueada por inclinacao das EMAs` com a inclinacao calculada de EMA9/EMA21/EMA50.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+28. Confirmacao obrigatoria de direcao das EMAs em M5 e M15:
+   - `config/fusion_config.yaml`: adicionado `entry_filters.ema_alignment.lower_timeframe_direction`.
+   - Para qualquer ordem em qualquer timeframe, M5 e M15 precisam confirmar a direcao das medias.
+   - Compra: EMA9, EMA21 e EMA50 precisam estar subindo em M5 e M15.
+   - Venda: EMA9, EMA21 e EMA50 precisam estar descendo em M5 e M15.
+   - `lookback_bars: 5` e `require_all_periods: true`.
+   - `fusion/main.py`: criado `_ema_lower_timeframes_direction_ok(...)`, chamado dentro de `_strategy_ema_alignment_ok(...)`.
+   - Quando bloqueia, o log mostra `bloqueada por direcao M5/M15` com a inclinacao bruta de EMA9/EMA21/EMA50.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion` passou.
+29. Camada observacional de Market Structure Features:
+   - Criado `fusion/features/market_structure.py`.
+   - Criado `tools/generate_market_structure_features.py`.
+   - Adicionado bloco `market_structure_features` em `config/fusion_config.yaml` com `enabled: false`.
+   - Esta camada nao participa de ordens, filtros ou modelos atuais; ela apenas gera CSVs para pesquisa em `reports/market_structure`.
+   - Features implementadas:
+     - estrutura do candle: corpo, sombras, rejeicao, posicao do fechamento, eficiencia/ineficiencia;
+     - sequencia: candles consecutivos, perda de momentum, velocidade e aceleracao;
+     - volatilidade: range, true range, ATR, compressao, expansao e explosao apos compressao;
+     - volume: volume relativo, z-score, climax, effort vs result, absorcao e mercado vazio;
+     - tendencia: EMAs, distancia da media, inclinacao normalizada por ATR, alinhamento;
+     - suporte/resistencia estatisticos: maximas/minimas locais, toques e rompimentos com/sem volume;
+     - regime: tendencia, consolidacao, expansao e risco de reversao;
+     - estatisticas avancadas: retorno log, skewness, curtose e entropia por janelas;
+     - contexto temporal: hora, minuto, dia da semana e sessao;
+     - perfil por ativo: volatilidade natural, ruido, vies direcional medio, amplitude diaria, percurso M5 diario, melhor horario de alta/baixa e papel provavel no portfolio.
+   - Smoke test executado:
+     - `.\venv\Scripts\python.exe tools\generate_market_structure_features.py --symbols EURUSD --timeframes M5 M15 --tail 500 --profile`
+     - Gerou `EURUSD_M5_market_structure.csv`, `EURUSD_M15_market_structure.csv`, `manifest.json` e perfis em `reports/market_structure`.
+   - Validacao: `.\venv\Scripts\python.exe -m compileall fusion tools\generate_market_structure_features.py` passou.
+30. Market Structure Features geradas para todos os ativos monitorados:
+   - Comando executado:
+     - `.\venv\Scripts\python.exe tools\generate_market_structure_features.py --symbols <30 ativos> --timeframes M5 M15 H1 --tail 5000 --profile`
+   - Ativos processados:
+     - `EURUSD`, `USDJPY`, `XAUUSD`, `GBPJPY`, `AUDUSD`, `USDCAD`, `USDCHF`, `EURGBP`, `EURJPY`, `NZDUSD`, `EURCHF`, `AUDCAD`, `AUDCHF`, `EURCAD`, `GBPCHF`, `AUDJPY`, `CADCHF`, `EURAUD`, `GBPAUD`, `NZDCAD`, `AUDNZD`, `CHFJPY`, `EURNZD`, `GBPCAD`, `AUDSGD`, `CADJPY`, `GBPNZD`, `NZDCHF`, `NZDJPY`, `NZDSGD`.
+   - Timeframes processados: `M5`, `M15`, `H1`.
+   - Resultado:
+     - 90 arquivos `*_market_structure.csv`.
+     - 450.000 linhas no total.
+     - 118 colunas por ativo/timeframe.
+     - 30 perfis estatisticos em `reports/market_structure/asset_profiles.csv` e `.json`.
+     - Manifesto em `reports/market_structure/manifest.json`.
+   - Observacao: segue como camada observacional; nenhuma feature nova foi conectada a modelos, filtros ou abertura de ordens.
+31. Camada global OHLCV em Shadow Mode:
+   - `config/fusion_config.yaml`: adicionado `entry_filters.market_structure`.
+   - Configuracao inicial:
+     - `enabled: true`.
+     - `mode: "shadow"`.
+     - `timeframes: ["current", "M5", "M15"]`.
+     - `bars: 260`.
+     - limites iniciais para `min_range_to_atr`, `max_overlap_ratio_10`, compressao e consolidacao.
+   - `fusion/main.py`: criado `_market_structure_gate(...)`, chamado dentro de `_execute_strategy_order(...)`.
+   - A camada e global porque todas as estrategias (`S1` a `S6`) passam por `_execute_strategy_order(...)`.
+   - Em `mode: shadow`, nunca bloqueia ordem; apenas registra diagnostico.
+   - Diagnosticos calculados por timeframe:
+     - `market_regime`.
+     - `range_to_atr`.
+     - `volatility_compression`.
+     - `volatility_expansion`.
+     - `regime_consolidation`.
+     - `market_structure_score`.
+     - `market_structure_reasons`.
+   - Dashboard/motivos agora podem exibir tokens como:
+     - `MS:shadow:ok`.
+     - `MS:shadow:M5:vol_baixa`.
+     - `MS:shadow:M15:consolidacao`.
+     - `MS:shadow:H1:compressao`.
+   - Logs registram `market_structure shadow` por tentativa de execucao, com score e motivos.
+   - Nenhuma mudanca feita em modelo, TP, SL, magic number, trailing ou decisao de ordem.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion` passou.
+     - Smoke test das features OHLCV em `EURUSD M5` retornou `range_to_atr`, compressao, expansao e regime.
+32. Relatorio estruturado do Market Structure Shadow:
+   - `config/fusion_config.yaml`: adicionado `entry_filters.market_structure.shadow_log_dir`.
+   - `fusion/main.py`: `_market_structure_gate(...)` agora grava JSONL em `logs/market_structure_shadow/market_structure_shadow_YYYYMMDD.jsonl`.
+   - Cada evento registra:
+     - timestamp, strategy, symbol, broker_symbol, timeframe, prediction, mode;
+     - aggregate_score e motivos;
+     - snapshots por timeframe analisado com regime, range/ATR, compressao, expansao e consolidacao.
+   - Criado `tools/summarize_market_structure_shadow.py`.
+   - O sumarizador gera:
+     - `reports/market_structure_shadow/market_structure_shadow_events_<date|all>.csv`;
+     - `reports/market_structure_shadow/market_structure_shadow_reasons_<date|all>.csv`;
+     - `reports/market_structure_shadow/market_structure_shadow_snapshots_<date|all>.csv`;
+     - `reports/market_structure_shadow/market_structure_shadow_summary_<date|all>.md`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\summarize_market_structure_shadow.py` passou.
+     - `.\venv\Scripts\python.exe tools\summarize_market_structure_shadow.py` passou com 0 eventos, gerando relatorio vazio.
+33. Labels operacionais e ranking inicial das features OHLCV:
+   - Criado `tools/build_market_structure_labels_and_ranking.py`.
+   - O script cruza `reports/market_structure/*_market_structure.csv` com `data/parquet/<timeframe>/<symbol>.parquet`.
+   - Labels implementados:
+     - `buy_target_before_stop`.
+     - `sell_target_before_stop`.
+     - `buy_result` / `sell_result`: `target`, `stop`, `timeout`, `both_same_candle`.
+     - `bars_to_event`.
+     - `mfe_points` e `mae_points`.
+   - Premissas do primeiro lote:
+     - TP 100 pontos.
+     - SL 100 pontos.
+     - Lookahead 100 candles.
+     - Spread considerado na entrada BUY quando existe coluna `spread`.
+     - `point_value` usado por ativo.
+   - Lote executado para 30 ativos x 3 timeframes (`M5`, `M15`, `H1`):
+     - 449.910 labels gerados.
+     - 14.540 linhas de ranking por feature/bucket/lado/ativo/timeframe.
+   - Arquivos gerados:
+     - `reports/market_structure_labels/market_structure_labels_tp100_sl100_lh100.csv`.
+     - `reports/market_structure_labels/market_structure_feature_ranking_tp100_sl100_lh100.csv`.
+   - Criado `tools/summarize_market_structure_ranking.py`.
+   - Resumo gerado:
+     - `reports/market_structure_labels/market_structure_ranking_summary.md`.
+   - Observacao importante:
+     - TP/SL fixos de 100 pontos distorcem ativos com escala diferente, especialmente `XAUUSD`.
+     - Este ranking e exploratorio; a proxima rodada deve usar TP/SL por ativo/timeframe a partir dos relatorios otimizados.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall tools\build_market_structure_labels_and_ranking.py tools\summarize_market_structure_ranking.py` passou.
+34. Retomada do roadmap OHLCV com relatorio real do Shadow Mode:
+   - Processado `logs/market_structure_shadow/market_structure_shadow_20260520.jsonl`.
+   - Comando executado:
+     - `.\venv\Scripts\python.exe tools\summarize_market_structure_shadow.py --date 20260520`.
+   - Resultado:
+     - 2.891 eventos de tentativa avaliados pela camada OHLCV.
+     - 3 estrategias com eventos (`strategy1`, `strategy2`, `strategy3`).
+     - 19 ativos com eventos.
+     - score medio geral: 0.266.
+   - Principais motivos em shadow:
+     - `M15:consolidacao`: 2.579.
+     - `M5:consolidacao`: 2.407.
+     - `M15:vol_baixa`: 2.306.
+     - `M15:compressao`: 1.635.
+     - `M5:compressao`: 1.482.
+   - Melhorado `tools/summarize_market_structure_shadow.py` para gerar tambem:
+     - `market_structure_shadow_calibration_20260520.csv`.
+     - `market_structure_shadow_score_buckets_20260520.csv`.
+   - Conclusao operacional:
+     - Ainda nao e recomendado mudar `entry_filters.market_structure.mode` de `shadow` para bloqueio.
+     - A calibracao atual bloquearia uma parcela muito alta de tentativas, com 2.193 de 2.891 eventos no bucket de score `0.00-0.20`.
+     - Proximo passo do roadmap deve ser calibrar por ativo/timeframe usando resultado posterior e TP/SL especificos, antes de transformar OHLCV em filtro real.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall tools\summarize_market_structure_shadow.py` passou.
+35. Limpeza do log operacional sem perder diagnostico:
+   - `config/fusion_config.yaml`:
+     - `entry_filters.market_structure.log_to_main: false`.
+     - `entry_filters.market_structure.log_each_check: true`, mantendo o JSONL completo em `logs/market_structure_shadow`.
+     - `entry_filters.candle_price_confirmation.log_passed_filter: false`.
+     - `entry_filters.ema_alignment.log_passed_filter: false`.
+     - `strategies.strategy4.log_setup_details: false`.
+   - `fusion/main.py`:
+     - Market Structure continua calculando e gravando shadow, mas so escreve no log principal se `log_to_main: true`.
+     - Strategy4 deixa de registrar `candle mae registrado` por padrao.
+     - Bloqueio da Strategy4 por setup virou linha direta com valores essenciais: `setup_block`, maxima/minima da mae e maxima/minima do ultimo candle fechado.
+   - Objetivo:
+     - Log principal fica focado em sinais, bloqueios, ordens e erros.
+     - Diagnostico detalhado continua preservado nos arquivos estruturados e relatorios.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion\main.py` passou.
+     - Parse do YAML passou com `yaml.safe_load`.
+36. Correcao da rotacao de log no Windows:
+   - Problema observado:
+     - `PermissionError: [WinError 32]` ao tentar renomear `logs/fusion_20260520.log` para `.log.1`.
+     - Causa provavel: outro processo Python/terminal mantendo o arquivo aberto durante o rollover.
+   - `fusion/core/logger.py`:
+     - Criado `WindowsSafeRotatingFileHandler`, derivado de `RotatingFileHandler`.
+     - Se o Windows bloquear a rotacao por arquivo em uso, o handler passa a escrever em um arquivo fallback com `pid` e hora no nome, sem derrubar o console.
+   - Validacao:
+     - `.\venv\Scripts\python.exe -m compileall fusion\core\logger.py` passou.
+37. Reducao de poluicao no console/dashboard:
+   - `config/fusion_config.yaml`:
+     - `dashboard.show_reason_details: false`.
+     - `dashboard.show_market_structure_shadow: false`.
+     - `dashboard.max_reason_items: 2`.
+     - `dashboard.max_summary_items: 6`.
+     - `logging.console_level: "WARNING"`.
+   - `fusion/main.py`:
+     - Dashboard passa a ocultar tokens `MS:shadow` por padrao.
+     - Motivos por linha e resumo agora sao limitados por configuracao.
+   - `fusion/core/logger.py`:
+     - Console handler passa a respeitar `logging.console_level`.
+     - Arquivo continua recebendo logs detalhados; console fica sem spam de `INFO`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion\main.py fusion\core\logger.py` passou.
+     - Parse do YAML confirmou os novos campos.
+38. Dashboard Streamlit inicial do FUSION_V2:
+   - Criada pasta `dashboard`.
+   - Criado `dashboard/fusion_dashboard.py`.
+   - Criado `dashboard/requirements.txt`.
+   - Criado `dashboard/run_dashboard.ps1`.
+   - O dashboard foi inspirado nos projetos em `repositorio`, principalmente `fx_analytics-main`, mas adaptado para ler artefatos reais do FUSION_V2:
+     - ultimo dashboard impresso em `logs/fusion_*.log`;
+     - motivos operacionais;
+     - eventos recentes de sinais/bloqueios/ordens;
+     - relatorios de `reports/market_structure_shadow`;
+     - arquivos relevantes em `logs` e `reports`.
+   - Incluido glossario para motivos como:
+     - `preco_candle_nao_confirmado`;
+     - `ema_nao_alinhada`;
+     - `sem_feature`;
+     - `POSICAO_JA_EXISTE`;
+     - `aguardando_setup`.
+   - Observacao:
+     - `streamlit` e `plotly` ainda nao estao instalados no venv atual.
+     - Para rodar: `.\venv\Scripts\python.exe -m pip install -r dashboard\requirements.txt` e depois `.\dashboard\run_dashboard.ps1`.
+   - Validacao:
+     - `.\venv\Scripts\python.exe -m py_compile dashboard\fusion_dashboard.py` passou.
+39. Market Structure profissional - features, manifesto e ranking:
+   - `fusion/features/market_structure.py` expandido com features do roadmap profissional:
+     - `atr_ratio_5_50`, `range_zscore_20`, `range_contraction`, `range_expansion`;
+     - `delta_proxy`, `pressure`, `buy_pressure_proxy`, `sell_pressure_proxy`, `pressure_imbalance`;
+     - `kaufman_er_<window>`;
+     - `swing_high`, `swing_low`, `break_of_structure_*`, `change_of_character_*`, `liquidity_grab_*`;
+     - `distance_to_swing_high_atr`, `distance_to_swing_low_atr`;
+     - `bars_since_breakout_*`, `bars_since_volume_climax`, `bars_since_swing_*`.
+   - Regenerados os 90 CSVs de `reports/market_structure` para 30 ativos x 3 timeframes (`M5`, `M15`, `H1`).
+   - Cada CSV passou para 149 colunas.
+   - Criado `tools/rebuild_market_structure_manifest.py`.
+   - Manifesto reconstruido:
+     - `reports/market_structure/manifest.json`.
+     - 90 arquivos listados.
+   - `tools/build_market_structure_labels_and_ranking.py` atualizado:
+     - novas features entram no ranking;
+     - buckets `nan` deixam de ser tratados como edge;
+     - criado modo `--use-optimized-target-stop`;
+     - adicionado filtro de outliers de TP/SL com `--min-stop-points`, `--max-stop-points`, `--max-target-points`.
+   - Ranking fixo 100/100 atualizado:
+     - `market_structure_labels_tp100_sl100_lh100.csv`: 449.910 labels.
+     - `market_structure_feature_ranking_tp100_sl100_lh100.csv`: 25.488 linhas.
+     - `market_structure_ranking_summary.md` atualizado.
+   - Ranking otimizado por ativo/timeframe criado:
+     - `market_structure_labels_optimized_lh100.csv`: 449.910 labels.
+     - `market_structure_feature_ranking_optimized_lh100.csv`: 25.488 linhas.
+     - `market_structure_ranking_summary_optimized_lh100.md` criado.
+     - Rejeitados 3 TP/SL fora dos limites:
+       - `NZDSGD H1` stop 108.340.
+       - `NZDSGD M30` stop 105.600.
+       - `XAUUSD D1` stop 4.610.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile tools\rebuild_market_structure_manifest.py` passou.
+     - `.\venv\Scripts\python.exe -m py_compile tools\build_market_structure_labels_and_ranking.py` passou.
+40. Market Structure shadow com rastreabilidade para resultado posterior:
+   - `fusion/main.py`:
+     - Cada snapshot de Market Structure agora grava `candle_time`.
+     - O evento shadow global agora grava `signal_candle_time` e `analysis_candle_times`.
+     - Isso permite cruzar a tentativa real de entrada com labels historicos/forward por candle, ativo, timeframe e direcao.
+   - `tools/summarize_market_structure_shadow.py`:
+     - Exporta `signal_candle_time` nos eventos.
+     - Exporta `analysis_candle_time` nos snapshots.
+   - Criado `tools/analyze_market_structure_shadow_outcomes.py`:
+     - Le os JSONL de `logs/market_structure_shadow`.
+     - Cruza eventos com `reports/market_structure_labels/market_structure_labels_optimized_lh100.csv`.
+     - Gera relatorios por motivo e por bucket de score.
+     - Eventos antigos sem `signal_candle_time` sao preservados, mas nao entram no cruzamento.
+   - Resultado inicial:
+     - `reports/market_structure_shadow_outcomes/market_structure_shadow_outcomes_20260521.md`.
+     - Foram encontrados 2.195 eventos shadow antigos, mas 0 com `signal_candle_time`, pois foram gerados antes desta mudanca.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py tools\summarize_market_structure_shadow.py tools\analyze_market_structure_shadow_outcomes.py` passou.
+41. Labeling com barreiras dinamicas por ATR:
+   - `tools/build_market_structure_labels_and_ranking.py`:
+     - Adicionado `--use-atr-barriers`.
+     - Adicionados `--target-atr-mult`, `--stop-atr-mult`, `--min-dynamic-points`, `--max-dynamic-points`.
+     - Quando existe ATR valido, `target_points` e `stop_points` passam a ser calculados por candle:
+       - alvo = `ATR * target_atr_mult / point_value`;
+       - stop = `ATR * stop_atr_mult / point_value`.
+     - Quando o ATR ainda nao existe no inicio da serie, o label usa fallback fixo e marca `label_mode=atr_fallback_fixed`.
+   - Gerado ranking ATR dinamico completo:
+     - `reports/market_structure_labels/market_structure_labels_atr1.5_slatr1_lh100.csv`.
+     - `reports/market_structure_labels/market_structure_feature_ranking_atr1.5_slatr1_lh100.csv`.
+     - `reports/market_structure_labels/market_structure_ranking_summary_atr1.5_slatr1_lh100.md`.
+   - Resultado:
+     - 449.910 labels.
+     - 25.488 linhas de ranking.
+     - 448.337 labels em `atr_dynamic`.
+     - 1.573 labels em `atr_fallback_fixed`.
+     - Media de target: 160.15 pontos.
+     - Media de stop: 110.56 pontos.
+   - Leitura inicial:
+     - H1 ficou mais favoravel que M5/M15.
+     - Sell teve win rate geral maior que buy neste recorte.
+     - Alguns piores buckets ficaram concentrados em `NZDSGD M5`, exigindo cautela por possivel comportamento anomalo/baixa qualidade historica.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile tools\build_market_structure_labels_and_ranking.py` passou.
+42. Calibracao offline de candidatos Market Structure:
+   - Criado `tools/build_market_structure_calibration.py`.
+   - A ferramenta le um ranking de features e seleciona candidatos por ativo/timeframe/lado usando:
+     - minimo de amostras;
+     - win rate minimo;
+     - edge score minimo;
+     - limite de top N por grupo.
+   - Saidas geradas para o ranking ATR dinamico:
+     - `reports/market_structure_calibration/market_structure_calibration_candidates_atr1.5_slatr1_lh100.csv`.
+     - `reports/market_structure_calibration/market_structure_calibration_candidates_atr1.5_slatr1_lh100.md`.
+     - `reports/market_structure_calibration/market_structure_calibration_preview_atr1.5_slatr1_lh100.json`.
+   - Resultado com filtros `min_samples=300`, `min_win_rate=0.60`, `min_edge_score=0.50`:
+     - 46 regras candidatas.
+     - 11 ativos com candidatos.
+     - 13 combinacoes ativo/timeframe/lado.
+   - Observacao:
+     - Este arquivo e apenas calibracao offline.
+     - Nenhuma regra foi aplicada ao robo ou transformada em bloqueio real.
+   - Validacao:
+     - `.\venv\Scripts\python.exe -m py_compile tools\build_market_structure_calibration.py` passou.
+43. Comparacao das calibracoes Market Structure:
+   - Geradas calibracoes tambem para:
+     - ranking fixo `tp100_sl100_lh100`: 218 regras candidatas, 27 ativos, 66 grupos.
+     - ranking otimizado `optimized_lh100`: 19 regras candidatas, 2 ativos, 4 grupos.
+     - ranking ATR dinamico `atr1.5_slatr1_lh100`: 46 regras candidatas, 11 ativos, 13 grupos.
+   - Criado `tools/compare_market_structure_calibrations.py`.
+   - Relatorio consolidado:
+     - `reports/market_structure_calibration/market_structure_calibration_comparison.md`.
+   - Leitura:
+     - `tp100_sl100_lh100` gera muitos candidatos e deve ser usado para exploracao, nao como gate direto.
+     - `optimized_lh100` ficou seletivo demais e concentrado principalmente em `XAUUSD` e `NZDSGD`.
+     - `atr1.5_slatr1_lh100` e o melhor ponto de partida para shadow/forward por respeitar volatilidade por candle.
+   - Validacao:
+     - `.\venv\Scripts\python.exe -m py_compile tools\compare_market_structure_calibrations.py` passou.
+44. Filtro de protecao por correlacao entre ativos:
+   - `config/fusion_config.yaml`:
+     - Adicionado `entry_filters.portfolio_correlation`.
+     - Modo inicial configurado como `block`.
+     - Matriz usada: `reports/correlation/correlation_matrix_H1.json`.
+     - Threshold: `min_abs_correlation=0.70`.
+     - So bloqueia se a posicao correlacionada estiver em prejuizo maior que `min_loss_money=0.01`.
+     - Escopo inicial: `position_scope=all`, protegendo a banca considerando todas as posicoes abertas.
+   - `fusion/main.py`:
+     - Criado carregamento cacheado da matriz de correlacao.
+     - Criado filtro global `_portfolio_correlation_allowed`.
+     - Integrado em `_execute_strategy_order(...)` antes dos filtros de entrada e antes do envio de ordem.
+     - Regra de risco:
+       - correlacao positiva forte + mesma direcao = acumula risco;
+       - correlacao negativa forte + direcao oposta = acumula risco;
+       - so bloqueia quando a posicao existente esta negativa.
+   - Criado `tools/build_asset_correlations.py`:
+     - Calcula correlacao por retornos logaritmicos a partir de `data/parquet`.
+     - Usa os ativos de `config/fusion_config.yaml`.
+     - Gera matriz JSON/CSV, pares fortes e relatorio Markdown.
+   - Arquivos gerados:
+     - `reports/correlation/correlation_matrix_H1.json`.
+     - `reports/correlation/correlation_matrix_H1.csv`.
+     - `reports/correlation/correlation_pairs_H1.csv`.
+     - `reports/correlation/correlation_report_H1.md`.
+   - Resultado inicial:
+     - 31 ativos calculados.
+     - 3.173 barras H1 alinhadas.
+     - Exemplos de pares fortes:
+       - `AUDSGD/AUDUSD`: +0,8772.
+       - `NZDSGD/NZDUSD`: +0,8599.
+       - `EURUSD/USDCHF`: -0,8233.
+       - `AUDUSD/NZDUSD`: +0,8091.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py tools\build_asset_correlations.py` passou.
+45. Alivio do filtro de correlacao por possivel reversao:
+   - Problema observado:
+     - Uma posicao correlacionada pode estar negativa, mas o proprio ativo pode estar mostrando recuperacao/reversao.
+     - Nesse caso, bloquear automaticamente toda entrada correlacionada pode ser conservador demais.
+   - `config/fusion_config.yaml`:
+     - Adicionado `entry_filters.portfolio_correlation.reversal_relief`.
+     - Configuracao inicial:
+       - `enabled: true`.
+       - `mode: allow`.
+       - `timeframes: ["M5", "M15"]`.
+       - `min_confirmations: 2`.
+       - `require_candle_confirmation: true`.
+       - `require_ema_alignment: true`.
+   - `fusion/main.py`:
+     - Criado `_correlation_reversal_relief_ok`.
+     - Antes de bloquear por correlacao, o sistema analisa o ativo que esta em prejuizo.
+     - Se M5 e M15 confirmarem recuperacao a favor da posicao aberta:
+       - BUY em prejuizo exige preco/candle e EMAs favoraveis a BUY.
+       - SELL em prejuizo exige preco/candle e EMAs favoraveis a SELL.
+     - Quando confirmado, o filtro de correlacao nao bloqueia e registra:
+       - `correlacao liberada por possivel reversao`.
+   - Se a reversao nao for confirmada:
+     - O bloqueio continua normal.
+     - O motivo inclui `sem_reversao=...`.
+   - Validacao:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py` passou.
+46. Filtro de fluxo macro dominante:
+   - Criado `fusion/features/macro_flow.py`.
+   - Objetivo:
+     - Identificar direcao macro antes da abertura da ordem.
+     - Separar fluxo macro de filtros locais como candle, EMA curta e market structure.
+   - Logica inicial:
+     - Analisa `H1`, `H4` e `D1`.
+     - Calcula score por timeframe usando:
+       - EMA21 vs EMA50;
+       - preco vs EMA50;
+       - inclinacao das medias;
+       - momentum normalizado por ATR.
+     - Agrega os timeframes com pesos:
+       - H1=1.0;
+       - H4=1.5;
+       - D1=2.0.
+     - Para Forex, calcula forca relativa da moeda base contra a moeda cotada usando os fluxos dos pares configurados.
+   - `config/fusion_config.yaml`:
+     - Adicionado `entry_filters.macro_flow`.
+     - Modo inicial: `shadow`.
+     - `min_score: 0.20`.
+     - `currency_strength.enabled: true`.
+   - `fusion/main.py`:
+     - Criado `_macro_flow_gate`.
+     - Integrado em `_execute_strategy_order(...)` antes de correlacao, market structure, candle e EMA.
+     - Em `shadow`, nao bloqueia; apenas registra:
+       - direcao macro;
+       - score;
+       - motivo `macro_neutro` ou `macro_contra`.
+   - Criado `tools/check_macro_flow.py`:
+     - Script manual para testar um ativo/direcao antes da ordem.
+     - Exemplo:
+       - `.\venv\Scripts\python.exe tools\check_macro_flow.py --symbol EURUSD --direction BUY`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py fusion\features\macro_flow.py tools\check_macro_flow.py` passou.
+     - Smoke test offline com `EURUSD` em parquet calculou H1/H4/D1 e agregou score macro.
+47. Fluxo macro hierarquico em modo bloqueio:
+   - Ajustado `entry_filters.macro_flow.mode` de `shadow` para `block`.
+   - Adicionado `entry_filters.macro_flow.aggregation: weighted_majority`.
+   - Adicionado `by_signal_timeframe`:
+     - Sinais M5/M15/M30 usam H1/H4/D1.
+     - Sinais H1 usam H4/D1.
+     - Sinais H4/D1 usam D1.
+   - `fusion/features/macro_flow.py`:
+     - `aggregate_symbol_flow` agora calcula:
+       - `bullish_weight`;
+       - `bearish_weight`;
+       - `total_weight`;
+       - score de voto ponderado.
+     - A direcao macro passa a ser maioria ponderada, nao apenas media continua do score.
+   - `fusion/main.py`:
+     - `_macro_flow_gate` agora recebe o timeframe do sinal.
+     - O filtro usa a hierarquia correta para cada timeframe antes da ordem.
+     - Em modo `block`, compra contra fluxo SELL e venda contra fluxo BUY sao bloqueadas.
+   - `tools/check_macro_flow.py`:
+     - Adicionado `--signal-timeframe`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py fusion\features\macro_flow.py tools\check_macro_flow.py` passou.
+     - Teste sintetico confirmou maioria ponderada: H4+D1 superaram H1 e classificaram BUY.
+48. Correcao do filtro de alinhamento de medias por timeframe da ordem:
+   - Confirmado no codigo:
+     - `_strategy_ema_alignment_ok(...)` ja valida o timeframe da propria ordem antes de verificar M5/M15.
+     - Exemplo: sinal D1 exige `EMA9 > EMA21 > EMA50` em D1 para BUY, ou `EMA9 < EMA21 < EMA50` em D1 para SELL.
+   - `config/fusion_config.yaml`:
+     - Adicionado `entry_filters.ema_alignment.require_signal_timeframe_alignment: true`.
+     - Adicionado `entry_filters.ema_alignment.lower_timeframe_direction.enabled: true`.
+     - M5 e M15 passam a ser obrigatorios como confirmacao direcional para qualquer timeframe.
+   - Regra final:
+     - BUY: timeframe da ordem alinhado para compra + M5/M15 subindo.
+     - SELL: timeframe da ordem alinhado para venda + M5/M15 descendo.
+   - `fusion/main.py`:
+     - Adicionado aviso se alguem tentar desligar `require_signal_timeframe_alignment`; o sistema ignora e continua exigindo alinhamento no timeframe da ordem.
+49. Blueprint institucional do FUSION_V2:
+   - Criado `docs/arquitetura_institucional_fusion_v2.md`.
+   - O documento define a arquitetura alvo para evoluir o sistema para:
+     - institutional decision engine;
+     - regime-aware trading system;
+     - multi-engine architecture;
+     - context-aware execution framework.
+   - Engines especificados:
+     - Market Regime Engine;
+     - Market Structure Engine;
+     - Execution Engine;
+     - Context Engine;
+     - Risk Engine;
+     - Portfolio Exposure Engine;
+     - Exit Engine;
+     - Confidence Calibration Engine;
+     - Consensus Engine;
+     - Volatility Engine;
+     - Session Engine;
+     - Opportunity Engine;
+     - Meta-Model Ensemble;
+     - XAI/Audit Engine.
+   - Incluido:
+     - organizacao de pastas;
+     - contrato padrao dos engines;
+     - pipeline de inferencia;
+     - pipeline de treinamento;
+     - pipeline de validacao;
+     - backtesting institucional;
+     - scores separados;
+     - roadmap evolutivo;
+     - proxima implementacao recomendada: `fusion/decision`.
+50. Primeira camada `fusion/decision`:
+   - Criada pasta `fusion/decision`.
+   - Criados contratos:
+     - `SignalCandidate`;
+     - `EngineOutput`;
+     - `DecisionResult`;
+     - `DecisionEvent`.
+   - Criado `DecisionPolicy`:
+     - calcula `consensus_score`;
+     - calcula `conflict_score`;
+     - calcula `tradeability_score`;
+     - decide `ALLOW` ou `BLOCK`;
+     - suporta reducao de lote futura via `position_multiplier`.
+   - Criado `DecisionAuditLogger`:
+     - grava eventos JSONL em `logs/decision_audit`.
+   - Criado `DecisionOrchestrator`:
+     - combina candidato + outputs dos engines + politica + auditoria.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `decision_engine`.
+   - Criado `tools/smoke_decision_engine.py`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion\decision tools\smoke_decision_engine.py` passou.
+     - Smoke test gerou `ALLOW ok` e gravou JSONL em `logs/decision_audit_smoke`.
+51. Integracao inicial do Decision Engine em modo auditoria:
+   - `fusion/main.py`:
+     - Instancia `DecisionOrchestrator` no `FusionV2`.
+     - Adiciona `_record_engine_output(...)`.
+     - Adiciona `_audit_decision_event(...)`.
+     - `_execute_strategy_order(...)` agora reseta e alimenta os outputs dos engines por tentativa de ordem.
+   - `fusion/strategies/base.py`:
+     - Passa `p_buy` e `p_sell` para `_execute_strategy_order(...)`, permitindo auditoria com probabilidade do sinal.
+   - Filtros plugados como `EngineOutput`:
+     - `macro_flow`;
+     - `portfolio_correlation`;
+     - `market_structure`;
+     - `candle_price`;
+     - `ema_alignment`.
+   - Comportamento operacional:
+     - O Decision Engine ainda nao decide a ordem.
+     - Ele audita a decisao factual do sistema atual: `ALLOW` ou `BLOCK`.
+     - Bloqueios continuam sendo feitos pelos filtros existentes.
+   - Ajuste de consenso:
+     - Engines `NEUTRAL` deixam de contar como alinhados; so direcao igual ao lado da ordem conta como alinhamento real.
+   - Criado `tools/summarize_decision_audit.py`:
+     - Gera CSV de eventos;
+     - Gera CSV por engine;
+     - Gera resumo Markdown.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py fusion\strategies\base.py fusion\decision\schema.py fusion\decision\policy.py fusion\decision\audit.py fusion\decision\orchestrator.py` passou.
+     - `.\venv\Scripts\python.exe tools\smoke_decision_engine.py` passou.
+     - `.\venv\Scripts\python.exe tools\summarize_decision_audit.py --log-dir logs\decision_audit_smoke --output-dir reports\decision_audit_smoke --date 20260521` passou.
+52. Ajuste de legibilidade do dashboard operacional:
+   - Problema observado no dashboard:
+     - `macro_flow` podia exibir score fora da escala esperada, como `-1.136`, por causa do ajuste de forca relativa entre moedas.
+     - O resumo de motivos estava contando pedacos internos como `candle+ema`, vindos de `sem_reversao=M5:candle+ema`.
+   - `fusion/main.py`:
+     - `macro_score` agora e limitado para o intervalo `[-1.0, 1.0]`.
+     - Motivo de `sem_reversao` agora sanitiza `:` para `_`, evitando quebrar o agrupamento.
+     - Criado `_dashboard_reason_key(...)` para agrupar motivos por categoria:
+       - `macro_fluxo_contra`;
+       - `correlacao_prejuizo`;
+       - `preco_candle_nao_confirmado`;
+       - `ema_nao_alinhada`;
+       - `sem_feature`;
+       - etc.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py` passou.
+     - Teste rapido confirmou categorias corretas para macro, correlacao, candle e sem_feature.
+53. Market Regime Engine v1:
+   - Criada pasta `fusion/engines`.
+   - Criado `fusion/engines/regime.py`.
+   - Criado `MarketRegimeEngine` com estados:
+     - `TREND`;
+     - `RANGE`;
+     - `COMPRESSION`;
+     - `EXPANSION`;
+     - `PANIC_VOLATILITY`;
+     - `TRANSITIONAL`;
+     - `INSUFFICIENT_DATA`.
+   - Features usadas:
+     - ATR ratio curto/longo;
+     - ATR percentile;
+     - ADX;
+     - Kaufman efficiency ratio;
+     - entropia binaria dos retornos;
+     - volatilidade rolling;
+     - momentum.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.market_regime`.
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criado `_market_regime_check(...)`.
+     - integrado antes de `macro_flow`.
+     - registra `EngineOutput` no Decision Audit.
+     - em `shadow`, nao bloqueia ordens.
+   - Criado `tools/check_market_regime.py`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\engines\__init__.py fusion\engines\regime.py fusion\main.py tools\check_market_regime.py` passou.
+     - Smoke test: `EURUSD H1 BUY` classificou `TRANSITIONAL`, com ADX ~21 e eficiencia baixa.
+54. Cooldown pos-fechamento de posicao:
+   - Problema observado:
+     - Ao fechar manualmente uma ordem em `EURNZD`, o robo podia abrir outra logo em seguida se o sinal continuasse valido.
+     - O cooldown anterior era apenas em memoria e era atualizado quando o robo abria ordem, nao necessariamente quando uma posicao era fechada manualmente.
+   - `config/fusion_config.yaml`:
+     - Adicionado `trading.reentry_cooldown_after_close`.
+     - Configuracao inicial:
+       - `enabled: true`;
+       - `seconds: 300`;
+       - `scope: system_symbol`.
+   - `fusion/main.py`:
+     - Criado `_system_magic_group()`.
+     - Criado `_recent_close_cooldown_remaining(...)`.
+     - A funcao consulta `mt5.history_deals_get(...)` e procura deals de saida (`DEAL_ENTRY_OUT` / `DEAL_ENTRY_OUT_BY`) no simbolo e magics do sistema.
+   - `fusion/strategies/base.py`:
+     - `_cooldown_ready(...)` agora tambem bloqueia se houver fechamento recente no historico do MT5.
+     - Motivo registrado:
+       - `cooldown_pos_fechamento:<segundos>s`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py fusion\strategies\base.py` passou.
+     - Parse YAML confirmou `reentry_cooldown_after_close`.
+55. Portfolio Exposure Engine v1:
+   - Criado `fusion/engines/portfolio.py`.
+   - Criado `PortfolioExposureEngine` para calcular:
+     - exposicao liquida por moeda;
+     - exposicao projetada apos a ordem candidata;
+     - concentracao por simbolo;
+     - posicoes negativas abertas.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.portfolio_exposure`.
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criada captura `_portfolio_positions_snapshot(...)`.
+     - criada checagem `_portfolio_exposure_check(...)`.
+     - integrado no fluxo comum antes do filtro de correlacao.
+     - registra `EngineOutput` no Decision Audit.
+   - Criado `tools/check_portfolio_exposure.py`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_portfolio_exposure.py --symbol EURNZD --side BUY` passou.
+     - `.\venv\Scripts\python.exe -m py_compile fusion\engines\portfolio.py fusion\engines\__init__.py fusion\main.py tools\check_portfolio_exposure.py` passou.
+56. Session Engine v1:
+   - Criado `fusion/engines/session.py`.
+   - Criado `SessionEngine` para classificar:
+     - Asia;
+     - London;
+     - New York;
+     - overlap London/New York;
+     - rollover/baixa liquidez;
+     - fim de semana.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.session_context`.
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criada checagem `_session_context_check(...)`.
+     - integrada apos `market_regime` e antes de `macro_flow`.
+     - registra `EngineOutput` no Decision Audit.
+   - Criado `tools/check_session_context.py`.
+   - Documentacao atualizada em `docs/arquitetura_institucional_fusion_v2.md`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_session_context.py` passou.
+     - `.\venv\Scripts\python.exe -m compileall fusion` passou.
+57. AI Advisor Engine:
+   - Objetivo:
+     - permitir que o robo consulte uma IA apenas como confirmacao final, depois que todos os filtros internos ja aprovaram a ordem;
+     - a IA nao abre ordem e nao altera parametros;
+     - a resposta esperada e JSON estruturado com `ALLOW`, `AVOID` ou `NEUTRAL`.
+   - Criado `fusion/engines/ai_advisor.py`.
+   - Criado `AIAdvisorEngine` com provider inicial `local_http_bridge`.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.ai_advisor`;
+     - estado inicial seguro:
+       - `enabled: false`;
+       - `mode: shadow`;
+       - `endpoint_url: http://127.0.0.1:8765/advice`;
+       - `fail_open: true`.
+   - `fusion/main.py`:
+     - criada checagem `_ai_advisor_check(...)`;
+     - integrada depois de todos os filtros e depois de calcular TP/SL, imediatamente antes do envio da ordem;
+     - em `shadow`, registra o retorno da IA sem bloquear;
+     - em `block`, bloqueia apenas se a IA responder `AVOID` com confianca >= `min_confidence_to_block`.
+   - Criado `tools/check_ai_advisor_payload.py`, que mostra o payload que sera enviado para a ponte local.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\engines\ai_advisor.py fusion\engines\__init__.py fusion\main.py tools\check_ai_advisor_payload.py` passou.
+     - `.\venv\Scripts\python.exe tools\check_ai_advisor_payload.py` gerou payload JSON valido.
+58. AI Review Agent:
+   - Objetivo:
+     - revisar decisoes ja gravadas no `decision_audit`;
+     - detectar possiveis falso bloqueios, entradas ruins ou falta de dados;
+     - permitir uso futuro de IA via ponte local `/review`;
+     - nunca alterar configuracao automaticamente nesta fase.
+   - Criado pacote `fusion/ai`.
+   - Criado `fusion/ai/reviewer.py`.
+   - Criado `AIReviewAgent` com:
+     - `build_payload(...)`;
+     - revisao heuristica local;
+     - chamada HTTP opcional para IA externa;
+     - escrita de JSONL e Markdown em `logs/ai_reviews`.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `ai_review_agent`;
+     - `auto_apply_changes: false`.
+   - Criado `tools/run_ai_decision_reviewer.py`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\ai\__init__.py fusion\ai\reviewer.py tools\run_ai_decision_reviewer.py` passou.
+     - `.\venv\Scripts\python.exe tools\run_ai_decision_reviewer.py --limit 5` leu 4636 eventos e gerou `logs/ai_reviews/ai_reviews_20260521_122836.*`.
+59. Context Engine v1:
+   - Criado `fusion/engines/context.py`.
+   - Criado `ContextEngine` para consolidar engines ja executados em:
+     - `context_score`;
+     - `context_conflict_score`;
+     - engines alinhados;
+     - engines conflitantes.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.context_engine`;
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criada checagem `_context_engine_check(...)`;
+     - integrada depois de candle/EMA e antes do `AIAdvisorEngine`.
+   - Criado `tools/check_context_engine.py`.
+   - Documentacao atualizada em `docs/arquitetura_institucional_fusion_v2.md`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_context_engine.py` passou com `context_score=0.7975`.
+     - `.\venv\Scripts\python.exe -m py_compile fusion\engines\context.py fusion\engines\__init__.py fusion\main.py tools\check_context_engine.py` passou.
+60. Ponte local AI Bridge:
+   - Criado `fusion/ai/bridge.py`.
+   - Criado servidor HTTP local com endpoints:
+     - `GET /health`;
+     - `POST /advice`;
+     - `POST /review`.
+   - Provider inicial:
+     - `mock_heuristic`, sem API externa.
+   - `POST /advice` retorna `ALLOW`, `AVOID` ou `NEUTRAL`.
+   - `POST /review` retorna `OK`, `POSSIBLE_FALSE_BLOCK`, `POSSIBLE_BAD_ENTRY` ou `NEEDS_MORE_DATA`.
+   - Criado `tools/run_ai_bridge.py` para subir a ponte local.
+   - Criado `tools/check_ai_bridge.py` para validar o contrato sem servidor persistente.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `ai_bridge`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_ai_bridge.py` passou.
+     - Teste HTTP temporario confirmou `GET /health` e `POST /advice`.
+61. Volatility Engine v1:
+   - Criado `fusion/engines/volatility.py`.
+   - Criado `VolatilityEngine` com:
+     - ATR atual;
+     - ATR ratio curto/longo;
+     - ATR percentile;
+     - range atual vs ATR;
+     - estados `NORMAL`, `COMPRESSION`, `EXPANSION`, `PANIC_VOLATILITY`, `LOW_INTRABAR_RANGE`.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.volatility_engine`;
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criada checagem `_volatility_engine_check(...)`;
+     - integrada apos `market_regime` e antes de `session_context`.
+   - `ContextEngine`:
+     - passou a considerar `volatility_engine` com peso proprio.
+   - Criado `tools/check_volatility_engine.py`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_volatility_engine.py` passou.
+     - `.\venv\Scripts\python.exe -m py_compile fusion\engines\volatility.py fusion\engines\__init__.py fusion\main.py tools\check_volatility_engine.py` passou.
+62. Market Briefing Overlay:
+   - Objetivo:
+     - transformar feedback textual do agente/analista em regras estruturadas de bloqueio ou moderacao;
+     - permitir que pareceres como "evitar XAUUSD M5 hoje" ou "moderar CHF crosses" entrem no fluxo do sistema;
+     - manter modo inicial `shadow` para auditar antes de bloquear.
+   - Criado `fusion/engines/market_briefing.py`.
+   - Criado `MarketBriefingEngine` com:
+     - leitura de arquivo JSON diario;
+     - aliases `GOLD`/`XAUUSD`;
+     - grupos como `GBP_CROSSES`, `CHF_CROSSES`, `SGD_CROSSES`;
+     - filtros por ativo, timeframe, estrategia, lado e tipo de setup inferido;
+     - estados `ok`, `moderate`, `block`, `no_briefing`.
+   - Criado `config/market_briefing_today.json` com o briefing informado:
+     - XAUUSD/GOLD M5/M15 bloqueio em scalping/breakout/market order;
+     - GBPJPY M5/M15 bloqueio em scalping/breakout/market order;
+     - GBPNZD bloqueio;
+     - AUDSGD/NZDSGD intraday bloqueio;
+     - CHF crosses moderacao;
+     - GBP crosses moderacao em breakout/market order.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.market_briefing`;
+     - modo inicial: `shadow`;
+     - `min_risk_to_block: EXTREMO`.
+   - `fusion/main.py`:
+     - criada checagem `_market_briefing_check(...)`;
+     - integrada depois do `context_engine` e antes de TP/SL/AI Advisor.
+   - Criado `tools/check_market_briefing.py`.
+   - Observacao:
+     - Durante o teste, o YAML principal acusou erro perto da lista `symbols`; a lista foi conferida e o parse YAML voltou a passar.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_market_briefing.py --symbol XAUUSD --timeframe M5 --side BUY --strategy strategy4` retornou `state=block`.
+     - `.\venv\Scripts\python.exe tools\check_market_briefing.py --symbol EURUSD --timeframe M5 --side BUY --strategy strategy1` retornou `state=ok`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_market_briefing.py` passou.
+63. Ajuste do Market Briefing no fluxo:
+   - Problema observado no dashboard:
+     - O `market_briefing` nao aparecia nos motivos porque estava integrado tarde no fluxo.
+     - Quando `macro_flow`, correlacao ou EMA bloqueavam antes, o briefing nao era executado.
+   - `fusion/main.py`:
+     - `_market_briefing_check(...)` passou a rodar logo no inicio de `_execute_strategy_order(...)`, antes de `market_regime`, `macro_flow`, correlacao e demais filtros.
+     - Em modo `shadow`, quando o briefing classifica `block` ou `moderate`, salva motivo curto:
+       - `MB:shadow:block:<regra>`;
+       - `MB:shadow:moderate:<regra>`.
+     - O dashboard passa a incluir esse motivo quando houve tentativa da estrategia.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+64. Entry Timing Engine - evitar comprar topo/vender fundo:
+   - Objetivo:
+     - evitar compra em topo e venda em fundo;
+     - permitir excecao quando houver quebra de estrutura (`BOS`) ou rompimento validado.
+   - Criado `fusion/engines/entry_timing.py`.
+   - Criado `EntryTimingEngine` com leitura das features de `fusion/features/market_structure.py`:
+     - distancia ate swing high em ATR;
+     - distancia ate swing low em ATR;
+     - extensao do preco contra EMA21 em ATR;
+     - breakout up/down;
+     - break of structure up/down;
+     - breakout com volume;
+     - volume ratio.
+   - Regras iniciais:
+     - BUY perto do swing high ou muito esticado acima da EMA21 bloqueia/modera se nao houver `break_of_structure_up` ou breakout validado.
+     - SELL perto do swing low ou muito esticado abaixo da EMA21 bloqueia/modera se nao houver `break_of_structure_down` ou breakout validado.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.entry_timing`;
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criada checagem `_entry_timing_check(...)`;
+     - integrada depois de `market_structure` e antes de candle/EMA.
+   - Criado `tools/check_entry_timing.py`.
+   - Validacoes:
+     - `buy_top` com BOS/breakout retornou `validated_breakout_buy`.
+     - `sell_bottom` com BOS/breakout retornou `validated_breakout_sell`.
+     - `buy_top_no_break` retornou `avoid_buying_top`.
+     - `sell_bottom_no_break` retornou `avoid_selling_bottom`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_entry_timing.py` passou.
+65. Portfolio Risk Map:
+   - Criado `tools/build_portfolio_risk_map.py`.
+   - Gera relatorios derivados da matriz de correlacao:
+     - `reports/portfolio_risk/strong_correlation_pairs.csv`;
+     - `reports/portfolio_risk/correlation_clusters.csv`;
+     - `reports/portfolio_risk/currency_exposure.csv`;
+     - `reports/portfolio_risk/position_correlation_risk.csv`;
+     - `reports/portfolio_risk/portfolio_risk_map.md`.
+   - Resultado inicial:
+     - 39 pares fortes;
+     - maiores clusters/conexoes: `AUDSGD`, `EURAUD`, `NZDSGD`, `AUDJPY`, `CADJPY`, `EURNZD`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\build_portfolio_risk_map.py` passou.
+66. Confidence Calibration Engine v1:
+   - Criado `fusion/engines/calibration.py`.
+   - Criado `ConfidenceCalibrationEngine`.
+   - Usa perfis historicos por `symbol/timeframe/side` derivados de:
+     - `reports/market_structure_calibration/market_structure_calibration_candidates_atr1.5_slatr1_lh100.csv`.
+   - Calcula:
+     - `raw_probability`;
+     - `historical_probability`;
+     - `calibrated_probability`.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.confidence_calibration`;
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criada checagem `_confidence_calibration_check(...)`;
+     - integrada apos `context_engine` e antes de TP/SL/AI Advisor.
+   - Criado `tools/check_confidence_calibration.py`.
+   - Validacao:
+     - `AUDCHF H1 SELL` com `p_sell=0.55` retornou `calibrated_probability=0.6243`, usando perfil historico medio `0.6985`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_confidence_calibration.py tools\build_portfolio_risk_map.py` passou.
+67. Shadow Engine Report:
+   - Criado `tools/build_shadow_engine_report.py`.
+   - Gera leitura consolidada da auditoria de decisoes em:
+     - `reports/shadow_engine_report/shadow_engine_report_YYYYMMDD_tailN.md`;
+     - `reports/shadow_engine_report/shadow_engine_report_YYYYMMDD_tailN.json`.
+   - Resume:
+     - total de eventos;
+     - ativos envolvidos;
+     - decisoes `ALLOW/BLOCK`;
+     - alertas por engine;
+     - bloqueios com `tradeability` alto;
+     - entradas permitidas com alerta shadow.
+   - Validacao:
+     - `.\venv\Scripts\python.exe tools\build_shadow_engine_report.py --date 20260521 --tail 500` passou.
+     - Resultado inicial: 500 eventos, 201 diagnosticos de engines, 26 eventos com alerta shadow.
+68. Diagnostico shadow mesmo com AutoTrading desativado:
+   - Ajustado `fusion/main.py` para rodar os diagnosticos shadow antes de auditar bloqueio por terminal/desligamento.
+   - Criado helper `_run_shadow_diagnostics(...)` para executar, em modo shadow:
+     - `market_briefing`;
+     - `market_regime`;
+     - `volatility_engine`;
+     - `session_context`;
+     - `portfolio_exposure`;
+     - `market_structure`;
+     - `entry_timing`;
+     - `context_engine`;
+     - `confidence_calibration`.
+   - Objetivo:
+     - manter auditoria rica mesmo quando a ordem e bloqueada cedo;
+     - permitir relatorios de comparacao institucional sem depender de envio real da ordem.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\main.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\build_shadow_engine_report.py` passou.
+69. Consensus Engine v1:
+   - Criado `fusion/engines/consensus.py`.
+   - Criado `ConsensusEngine` para agregar outputs dos motores ja existentes.
+   - Calcula:
+     - `consensus_score`;
+     - `conflict_score`;
+     - `support_weight`;
+     - `conflict_weight`;
+     - `warning_weight`;
+     - motores alinhados;
+     - motores conflitantes;
+     - motores com alerta.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.consensus_engine`;
+     - modo inicial: `shadow`;
+     - pesos iniciais para `market_briefing`, `market_regime`, `volatility_engine`, `session_context`, `macro_flow`, `portfolio_exposure`, `portfolio_correlation`, `market_structure`, `entry_timing`, `candle_price`, `ema_alignment`, `context_engine` e `confidence_calibration`.
+   - `fusion/main.py`:
+     - criada checagem `_consensus_engine_check(...)`;
+     - integrada depois de `confidence_calibration` e antes do `ai_advisor`;
+     - tambem integrada em `_run_shadow_diagnostics(...)`.
+   - Criado `tools/check_consensus_engine.py`.
+   - Validacao:
+     - teste controlado retornou `state=strong_consensus`, `direction=BUY`, `consensus_score=0.5589`, `conflict_score=0.099`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_consensus_engine.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+70. Opportunity Engine v1:
+   - Criado `fusion/engines/opportunity.py`.
+   - Criado `OpportunityEngine` para separar previsao/direcao de operabilidade real da entrada.
+   - Calcula:
+     - `tradeability_score`;
+     - `direction_score`;
+     - `conflict_score`;
+     - componentes usados no placar.
+   - Usa como componentes iniciais:
+     - probabilidade direcional do modelo;
+     - `consensus_engine`;
+     - `entry_timing`;
+     - `context_engine`;
+     - `confidence_calibration`;
+     - `market_structure`;
+     - `volatility_engine`;
+     - `session_context`.
+   - `config/fusion_config.yaml`:
+     - adicionada secao `entry_filters.opportunity_engine`;
+     - modo inicial: `shadow`.
+   - `fusion/main.py`:
+     - criada checagem `_opportunity_engine_check(...)`;
+     - integrada depois de `consensus_engine` e antes do `ai_advisor`;
+     - tambem integrada em `_run_shadow_diagnostics(...)`.
+   - Criado `tools/check_opportunity_engine.py`.
+   - Validacao:
+     - teste controlado retornou `state=tradable`, `direction=BUY`, `tradeability_score=0.6039`, `conflict_score=0.18`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_opportunity_engine.py tools\check_consensus_engine.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+71. Auditoria shadow completa em bloqueios operacionais:
+   - Ajustado `fusion/main.py` para completar diagnosticos shadow antes de auditar qualquer bloqueio operacional.
+   - Criado helper `_audit_block_with_shadow(...)`.
+   - Ajustado `_run_shadow_diagnostics(...)` para nao duplicar engines que ja rodaram no mesmo ciclo.
+   - Objetivo:
+     - quando `macro_flow`, correlacao, candle, EMA ou outro filtro bloquear cedo, a auditoria ainda registra os engines shadow restantes;
+     - `consensus_engine` e `opportunity_engine` passam a aparecer no evento de auditoria mesmo em bloqueios antecipados.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+72. Item 3 - Decisao de promocao Shadow -> Block:
+   - Criado `reports/shadow_engine_report/shadow_promotion_item3_20260521_tail300.md`.
+   - Decisao:
+     - nenhum engine novo deve sair de `shadow` para `block` neste momento.
+   - Motivos:
+     - somente 2 eventos `ALLOW` no recorte;
+     - `opportunity_engine` ainda esta permissivo em cenarios com risco de portfolio/macro/correlacao;
+     - `market_structure` ainda gera muitos alertas e precisa calibracao por ativo/timeframe;
+     - `confidence_calibration` ainda tem muitos eventos `no_profile`.
+   - Candidatos futuros:
+     - `portfolio_exposure` primeiro como reducao de risco/tamanho;
+     - `entry_timing` para topo/fundo sem BOS/breakout;
+     - `market_briefing` apenas para risco extremo;
+     - `consensus_engine` inicialmente como reducao de lote;
+     - `opportunity_engine` depois de recalibrar pesos.
+73. Item 4 - Market Structure Engine Institucional v2:
+   - Criado relatorio `reports/shadow_engine_report/market_structure_item4_v2_20260521.md`.
+   - Expandido `fusion/features/market_structure.py` com features:
+     - HH/HL/LH/LL;
+     - expansao de swings em ATR;
+     - sequencia estrutural bullish/bearish;
+     - transicao estrutural;
+     - displacement up/down;
+     - FVG bullish/bearish;
+     - mitigacao de FVG;
+     - imbalance bullish/bearish;
+     - proxy de order block;
+     - stop hunt up/down;
+     - `institutional_structure_score`;
+     - barras desde BOS/CHOCH/stop hunt.
+   - Atualizado `fusion/main.py` para incluir esses campos no snapshot/analisador shadow de `market_structure`.
+   - Atualizado `config/fusion_config.yaml`:
+     - `flag_stop_hunt`;
+     - `use_institutional_score`;
+     - `min_institutional_structure_score`;
+     - penalidades `stop_hunt` e `weak_institutional_structure`.
+   - Novos motivos shadow:
+     - `stop_hunt`;
+     - `estrutura_fraca`.
+   - Status:
+     - permanece em `shadow`;
+     - precisa reiniciar o robo para gerar eventos novos com as novas features.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m py_compile fusion\features\market_structure.py fusion\main.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+74. Item 5 - Execution Engine v1:
+   - Criado `fusion/engines/execution.py`.
+   - Criado `ExecutionEngine` para separar direcao de qualidade de execucao.
+   - Calcula:
+     - `entry_quality_score`;
+     - `breakout_quality`;
+     - qualidade de breakout BUY/SELL;
+     - rejection alinhado;
+     - absorcao de liquidez;
+     - fake breakout / stop hunt;
+     - exhaustion candle;
+     - momentum ignition;
+     - volume de execucao;
+     - range intrabar vs ATR.
+   - Estados:
+     - `good_execution`;
+     - `acceptable_with_warnings`;
+     - `weak_execution`;
+     - `avoid_execution`;
+     - `INSUFFICIENT_DATA`.
+   - Atualizado `fusion/main.py`:
+     - adicionada checagem `_execution_engine_check(...)`;
+     - integrada depois de `entry_timing` e antes de candle/EMA;
+     - integrada em `_run_shadow_diagnostics(...)`.
+   - Atualizado `config/fusion_config.yaml`:
+     - nova secao `entry_filters.execution_engine`;
+     - adicionados pesos em `context_engine`, `consensus_engine` e `opportunity_engine`.
+   - Atualizado `tools/build_shadow_engine_report.py` para contar `execution_engine`.
+   - Criado `tools/check_execution_engine.py`.
+   - Criado relatorio `reports/shadow_engine_report/execution_engine_item5_v1_20260521.md`.
+   - Status:
+     - permanece em `shadow`;
+     - precisa reiniciar o robo para gerar eventos novos com o engine.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_execution_engine.py tools\build_shadow_engine_report.py` passou.
+     - teste sintetico retornou `state=good_execution`, `entry_quality_score=0.82`, `breakout_quality=0.85`.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+75. Item 6 - Risk Engine v1:
+   - Criado `fusion/engines/risk.py`.
+   - Criado `RiskEngine` para avaliar risco operacional antes da ordem.
+   - Calcula:
+     - `risk_score`;
+     - `position_multiplier_suggested`;
+     - drawdown percentual;
+     - perda flutuante percentual;
+     - quantidade de posicoes abertas;
+     - quantidade de posicoes negativas;
+     - conflito vindo de engines;
+     - risco de portfolio/correlacao;
+     - risco de volatilidade extrema.
+   - Estados:
+     - `normal_risk`;
+     - `reduced_risk`;
+     - `high_risk`;
+     - `critical_risk`.
+   - Atualizado `fusion/main.py`:
+     - adicionados snapshots de conta e posicoes;
+     - adicionada checagem `_risk_engine_check(...)`;
+     - integrado depois de `execution_engine` e antes de candle/EMA;
+     - integrado em `_run_shadow_diagnostics(...)`.
+   - Atualizado `config/fusion_config.yaml`:
+     - nova secao `entry_filters.risk_engine`;
+     - adicionados pesos em `context_engine`, `consensus_engine` e `opportunity_engine`.
+   - Atualizado `tools/build_shadow_engine_report.py` para contar `risk_engine`.
+   - Criado `tools/check_risk_engine.py`.
+   - Criado relatorio `reports/shadow_engine_report/risk_engine_item6_v1_20260521.md`.
+   - Status:
+     - permanece em `shadow`;
+     - sugere reducao de risco, mas ainda nao altera lote real.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_risk_engine.py tools\build_shadow_engine_report.py` passou.
+     - teste sintetico retornou `state=critical_risk`, `risk_score=0.17`.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+76. Item 7 - Portfolio Exposure Engine v2:
+   - Criado relatorio `reports/shadow_engine_report/portfolio_exposure_item7_v2_20260521.md`.
+   - Expandido `fusion/engines/portfolio.py`.
+   - Novas leituras:
+     - exposicao sintetica por moeda;
+     - exposicao projetada por moeda;
+     - exposicao perdedora por moeda;
+     - exposicao bruta atual/projetada;
+     - cluster correlacionado com ativo candidato;
+     - posicoes correlacionadas;
+     - concentracao por simbolo;
+     - posicoes negativas.
+   - Novos estados:
+     - `gross_overexposure`;
+     - `gross_warning`;
+     - `cluster_overexposure`;
+     - `cluster_warning`;
+     - `losing_currency_overexposure`.
+   - Atualizado `fusion/main.py`:
+     - `_portfolio_exposure_check(...)` passa matriz de correlacao para o engine.
+   - Atualizado `config/fusion_config.yaml`:
+     - `max_cluster_exposure`;
+     - `warning_cluster_exposure`;
+     - `correlation_threshold`;
+     - `max_gross_exposure`;
+     - `warning_gross_exposure`;
+     - `max_losing_currency_exposure`;
+     - `matrix_path`.
+   - Atualizado `tools/build_shadow_engine_report.py` para reconhecer estados novos.
+   - Atualizado `tools/check_portfolio_exposure.py`.
+   - Status:
+     - permanece em `shadow`;
+     - primeiro uso recomendado ainda e reducao de risco/tamanho, nao bloqueio.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_portfolio_exposure.py tools\build_shadow_engine_report.py` passou.
+     - teste sintetico retornou `state=cluster_overexposure`, `score=0.4`.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+77. Item 8 - Confidence Calibration Engine v2:
+   - Criado `tools/build_confidence_calibration_profiles.py`.
+   - Gerados perfis em:
+     - `reports/confidence_calibration/confidence_calibration_profiles.json`;
+     - `reports/confidence_calibration/confidence_calibration_profiles.md`.
+   - Criado relatorio `reports/confidence_calibration/confidence_calibration_item8_v2_20260521.md`.
+   - Resultado inicial:
+     - 68 perfis exatos;
+     - 46 perfis fallback.
+   - Atualizado `fusion/engines/calibration.py`:
+     - leitura de `profiles_path`;
+     - fallback por symbol/timeframe/lado;
+     - suavizacao Bayesiana;
+     - `wilson_lower`;
+     - `reliability_score`;
+     - estados `fallback_profile`, `low_reliability`, `weak_profile`, `no_profile`.
+   - Atualizado `config/fusion_config.yaml`:
+     - `profiles_path`;
+     - `use_profiles`;
+     - `prior_samples`;
+     - `min_reliability`.
+   - Atualizado `tools/check_confidence_calibration.py`.
+   - Status:
+     - permanece em `shadow`;
+     - nao bloqueia ordem nem altera lote.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\build_confidence_calibration_profiles.py` passou.
+     - `AUDCHF H1 SELL` com probabilidade bruta `0.55` retornou calibrada `0.6488`, reliability `0.8207`, estado `calibrated`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\build_confidence_calibration_profiles.py tools\check_confidence_calibration.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+78. Item 9 - Meta-Model Ensemble Engine v1:
+   - Criado `fusion/engines/meta_model.py`.
+   - Criado `tools/check_meta_model_ensemble.py`.
+   - Criado relatorio `reports/shadow_engine_report/meta_model_item9_v1_20260521.md`.
+   - O novo engine avalia:
+     - experts ativos do ensemble aprovado;
+     - peso BUY/SELL;
+     - consenso com a direcao candidata;
+     - conflito entre experts;
+     - concentracao em um unico expert;
+     - confianca media;
+     - fallback `single_model` quando nao houver ensemble.
+   - Integrado em `fusion/main.py`:
+     - `_meta_model_ensemble_check(...)`;
+     - chamada no inicio de `_execute_strategy_order(...)`;
+     - diagnostico shadow em `_run_shadow_diagnostics(...)`.
+   - Atualizado `fusion/strategies/base.py` para passar `model`, `approved_model` e `approved_status` ao fluxo comum.
+   - Atualizado `config/fusion_config.yaml`:
+     - `entry_filters.meta_model_ensemble`;
+     - peso no `context_engine`;
+     - peso no `consensus_engine`;
+     - peso no `opportunity_engine`.
+   - Atualizado `tools/build_shadow_engine_report.py` para reconhecer `meta_model_ensemble`.
+   - Status:
+     - permanece em `shadow`;
+     - nao bloqueia ordem nem altera probabilidade operacional.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_meta_model_ensemble.py` passou:
+       - `ensemble_ok`;
+       - `conflicted_ensemble`;
+       - `single_model`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_meta_model_ensemble.py tools\build_shadow_engine_report.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+79. Item 10 - Session Engine v2:
+   - Expandido `fusion/engines/session.py`.
+   - Criado relatorio `reports/shadow_engine_report/session_engine_item10_v2_20260521.md`.
+   - Atualizado `tools/check_session_context.py`.
+   - Atualizado `fusion/main.py` para passar `symbol`, `timeframe` e lado do sinal ao `SessionEngine`.
+   - Atualizado `config/fusion_config.yaml` em `entry_filters.session_context`.
+   - Novas leituras:
+     - abertura London;
+     - abertura New York;
+     - transicao de sessao;
+     - rollover;
+     - sexta-feira perto do fechamento;
+     - adequacao do ativo a sessao;
+     - ativo ruidoso para scalping.
+   - Estados novos/expandidos:
+     - `friday_close_risk`;
+     - `weak_session_fit`;
+     - `rollover_low_liquidity`;
+     - `london_new_york_overlap`;
+     - `london`;
+     - `new_york`;
+     - `asia`;
+     - `weekend`.
+   - Status:
+     - permanece em `shadow`;
+     - nao bloqueia ordem nem altera lote.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_session_context.py` passou.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_session_context.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+80. Item 11 - Opportunity Engine v2:
+   - Expandido `fusion/engines/opportunity.py`.
+   - Criado `tools/check_opportunity_engine.py`.
+   - Criado relatorio `reports/shadow_engine_report/opportunity_engine_item11_v2_20260521.md`.
+   - Atualizado `config/fusion_config.yaml`.
+   - O engine agora separa:
+     - `direction_probability`;
+     - `execution_score`;
+     - `context_score`;
+     - `risk_score`;
+     - `model_quality_score`;
+     - `consensus_score`.
+   - Adicionadas penalidades por:
+     - conflitos severos;
+     - fatores negativos;
+     - warnings;
+     - menor pilar de qualidade abaixo do aceitavel.
+   - Estados:
+     - `high_quality`;
+     - `tradable`;
+     - `marginal`;
+     - `poor`;
+     - `conflicted`;
+     - `insufficient_context`.
+   - Status:
+     - permanece em `shadow`;
+     - nao bloqueia ordem nem altera lote.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_opportunity_engine.py` passou:
+       - oportunidade boa retornou `high_quality`;
+       - oportunidade ruim retornou `poor`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_opportunity_engine.py tools\build_shadow_engine_report.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+81. Item 12 - Feature Engineering v2:
+   - Criado `fusion/engines/feature_engineering.py`.
+   - Criado `tools/check_feature_engineering.py`.
+   - Criado relatorio `reports/shadow_engine_report/feature_engineering_item12_v2_20260521.md`.
+   - Integrado em `fusion/main.py`:
+     - `_feature_engineering_check(...)`;
+     - chamada apos `market_structure` e antes de `entry_timing`;
+     - diagnostico shadow em `_run_shadow_diagnostics(...)`.
+   - Atualizado `config/fusion_config.yaml`:
+     - `entry_filters.feature_engineering`;
+     - peso no `context_engine`;
+     - peso no `consensus_engine`;
+     - peso no `opportunity_engine`.
+   - Atualizado `tools/build_shadow_engine_report.py`.
+   - Familias auditadas:
+     - candle anatomy;
+     - volatility;
+     - volume microstructure;
+     - trend/momentum;
+     - structure;
+     - statistical;
+     - temporal.
+   - Estados:
+     - `feature_quality_ok`;
+     - `feature_anomaly_context`;
+     - `feature_quality_weak`;
+     - `insufficient_features`;
+     - `insufficient_data`.
+   - Status:
+     - permanece em `shadow`;
+     - nao bloqueia ordem nem altera lote/modelo.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_feature_engineering.py` passou:
+       - `state=feature_quality_ok`;
+       - `score=0.939`;
+       - `coverage=0.977`;
+       - `families=7`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_feature_engineering.py tools\build_shadow_engine_report.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+82. Item 13 - Risk Engine v2:
+   - Expandido `fusion/engines/risk.py`.
+   - Atualizado `fusion/main.py`.
+   - Atualizado `config/fusion_config.yaml`.
+   - Atualizado `tools/check_risk_engine.py`.
+   - Criado relatorio `reports/shadow_engine_report/risk_engine_item13_v2_20260521.md`.
+   - Novas leituras:
+     - margem;
+     - nivel de margem;
+     - uso de margem;
+     - exposicao sintetica por moeda;
+     - exposicao projetada por moeda;
+     - posicoes no mesmo ativo;
+     - posicoes na mesma direcao;
+     - risco por volatilidade;
+     - risco por sessao;
+     - risco por feature quality;
+     - risco por oportunidade fraca.
+   - Novas features no audit:
+     - `margin_usage_pct`;
+     - `currency_exposure`;
+     - `projected_currency_exposure`;
+     - `max_projected_currency_risk`;
+     - `same_symbol_positions`;
+     - `same_direction_positions`.
+   - Status:
+     - permanece em `shadow`;
+     - nao altera lote real;
+     - `position_multiplier_suggested` fica pronto para forward test.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_risk_engine.py` passou:
+       - `state=critical_risk`;
+       - `risk_score=0.0`;
+       - `position_multiplier_suggested=0.5`;
+       - `margin_usage_pct=32.4607`.
+     - `.\venv\Scripts\python.exe -m compileall fusion tools\check_risk_engine.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+83. Item 14 - Dashboard Institucional v1:
+   - Atualizado `dashboard/fusion_dashboard.py`.
+   - Criado `tools/check_dashboard_data.py`.
+   - Criado relatorio `reports/shadow_engine_report/dashboard_item14_v1_20260521.md`.
+   - Novas abas:
+     - `Decision Audit`;
+     - `Heatmaps`;
+     - `Risco`;
+     - `Engines`.
+   - O dashboard agora le:
+     - `logs/fusion_*.log`;
+     - `logs/decision_audit/decision_audit_*.jsonl`;
+     - relatorios shadow.
+   - Novas visoes:
+     - tradeability por ativo/timeframe;
+     - conflict/consensus por ativo/timeframe;
+     - score por engine;
+     - estados por engine;
+     - risco, multiplicador sugerido, penalties e quality floor;
+     - feature coverage;
+     - session fit;
+     - meta-model info;
+     - calibracao.
+   - Status:
+     - dashboard separado do loop do robo;
+     - nao altera execucao.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_dashboard_data.py` passou, lendo `decision_audit_20260521.jsonl` com 50 eventos e 835 linhas de engines.
+     - `.\venv\Scripts\python.exe -m compileall dashboard tools\check_dashboard_data.py` passou.
+     - `.\venv\Scripts\python.exe -c "import dashboard.fusion_dashboard as d; print('dashboard_import_ok')"` passou.
+     - `streamlit` e `plotly` instalados no venv para execucao local do dashboard.
+     - `dashboard\run_dashboard.ps1` atualizado para subir em `http://127.0.0.1:8501`.
+     - Teste em foreground confirmou inicializacao do Streamlit; tentativa de deixar em background pelo `Start-Process` nao permaneceu viva nesta sessao.
+84. Pos-roadmap - Explicabilidade/XAI v1:
+   - Criado `fusion/decision/explain.py`.
+   - `DecisionEvent` passou para `decision_event_v2`, com campo opcional `explanation`.
+   - `_audit_decision_event(...)` agora adiciona explicacao consolidada quando `decision_engine.xai_enabled: true`.
+   - `config/fusion_config.yaml`:
+     - `decision_engine.xai_enabled: true`;
+     - `decision_engine.xai_top_factors: 8`.
+   - `dashboard/fusion_dashboard.py` agora mostra:
+     - `xai_final_score`;
+     - `xai_confidence_band`;
+     - `xai_summary`;
+     - principais fatores positivos;
+     - principais fatores negativos.
+   - `tools/summarize_decision_audit.py` exporta campos XAI e inclui resumo XAI no markdown.
+   - Criado `tools/check_xai_explainer.py`.
+   - Criado relatorio `reports/shadow_engine_report/xai_explainability_v1_20260521.md`.
+   - Status:
+     - audit-only;
+     - nao bloqueia ordem;
+     - nao muda lote;
+     - nao altera TP/SL/trailing.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe tools\check_xai_explainer.py` passou.
+     - `.\venv\Scripts\python.exe -m compileall fusion dashboard tools\check_xai_explainer.py tools\summarize_decision_audit.py tools\check_dashboard_data.py` passou.
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou.
+     - `.\venv\Scripts\python.exe tools\check_dashboard_data.py` passou.
+     - `.\venv\Scripts\python.exe tools\summarize_decision_audit.py --date 20260521 --output-dir reports\decision_audit_xai_check` processou 15152 eventos antigos sem erro.
+85. Promocao conservadora de shadow para bloqueio real v1:
+   - Baseado na analise de `reports/decision_audit` e `reports/shadow_engine_report`:
+     - 17175 eventos auditados;
+     - 34 `ALLOW`;
+     - principais ALLOW concentrados em `EURNZD D1 SELL`, `NZDCAD H1 BUY` e `AUDCAD M30 BUY`;
+     - varios ALLOW carregavam alertas de `portfolio_exposure`, `risk_engine`, `volatility_engine` e `opportunity_engine`.
+   - Atualizado `config/fusion_config.yaml`:
+     - `entry_filters.risk_engine.mode: "block"`;
+     - `entry_filters.risk_engine.block_states: ["critical_risk"]`;
+     - `entry_filters.portfolio_exposure.mode: "block"`;
+     - `entry_filters.portfolio_exposure.block_states: ["symbol_concentration", "currency_overexposure", "gross_overexposure", "cluster_overexposure", "losing_currency_overexposure"]`;
+     - `entry_filters.volatility_engine.mode: "block"`;
+     - `entry_filters.volatility_engine.block_states: ["PANIC_VOLATILITY"]`;
+     - `entry_filters.opportunity_engine.mode: "block"`;
+     - `entry_filters.opportunity_engine.block_states: ["poor", "conflicted"]`.
+   - Atualizado `fusion/main.py`:
+     - criado `_engine_state_should_block(...)`;
+     - os engines promovidos agora bloqueiam apenas quando `output.state` estiver em `block_states`;
+     - estados moderados, como `high_risk`, `currency_warning`, `marginal`, `EXPANSION` e `COMPRESSION`, continuam sem bloqueio automatico nesta fase.
+   - Status:
+     - ainda existe `ordens_bloqueadas_config`, entao a operacao real segue protegida;
+     - quando a trava global sair, esses novos filtros passam a proteger entradas de maior risco.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion\main.py` passou.
+     - Smoke test confirmou:
+       - `critical_risk` bloqueia;
+       - `high_risk` nao bloqueia apenas por estar em alerta.
+     - Parse do YAML confirmou os modos e `block_states`.
+86. Ajuste de motivo da trava global de novas ordens:
+   - Observacao do usuario:
+     - a trava usada no YAML e `trading.allow_new_orders: false`;
+     - o motivo operacional antigo aparecia como `ordens_bloqueadas_config`.
+   - Atualizado `fusion/main.py`:
+     - motivo mudou para `allow_new_orders_false`;
+     - log agora informa explicitamente `trading.allow_new_orders=false`.
+   - Atualizado `dashboard/fusion_dashboard.py`:
+     - glossario inclui `allow_new_orders_false`;
+     - `ordens_bloqueadas_config` fica apenas como motivo legado para leitura de logs antigos.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall fusion\main.py dashboard\fusion_dashboard.py` passou.
+     - Smoke test de `_dashboard_reason_key('S1:allow_new_orders_false')` retornou `allow_new_orders_false`.
+87. Ajuste de exibicao para scores zerados de ensemble aprovado:
+   - Problema observado:
+     - algumas celulas do dashboard apareciam como `0.000/0.000`;
+     - isso podia parecer probabilidade real, mas em muitos casos indica ensemble aprovado neutro sem expert ativo, sem dados ou sem features.
+   - Atualizado `fusion/main.py`:
+     - quando `approved_model` retorna `pred=0` com `p_buy=0` e `p_sell=0`, o motivo passa a incluir `sem_expert_ativo`;
+     - a celula do dashboard passa a mostrar `N/A` para estados `approved:NEUTRO`, `approved:SEM_DADOS`, `approved:SEM_FEATURES` ou `approved:ERRO_FEATURES` com scores zerados.
+   - Objetivo:
+     - diferenciar score/probabilidade real muito baixa de ausencia de voto ativo no ensemble.
+88. Fallback do dashboard externo para `decision_audit`:
+   - Problema observado:
+     - o dashboard Streamlit podia mostrar `Nenhum dashboard encontrado no log ainda`;
+     - o painel operacional do robo e impresso com `print()`, entao nem sempre o bloco `FUSION_V2 DASHBOARD` existe em `logs/fusion_*.log`.
+   - Atualizado `dashboard/fusion_dashboard.py`:
+     - criado `audit_to_status_table(...)`;
+     - criado `reasons_from_audit(...)`;
+     - quando nao houver bloco de dashboard no log, o Streamlit monta a tabela de status a partir dos eventos recentes de `logs/decision_audit`.
+   - Validacoes:
+     - `.\venv\Scripts\python.exe -m compileall dashboard\fusion_dashboard.py` passou.
+     - `.\venv\Scripts\python.exe tools\check_dashboard_data.py` passou.
+     - Smoke test do fallback leu 50 eventos e montou 11 ativos na tabela.
+89. Organizacao da raiz do projeto:
+   - Objetivo:
+     - remover arquivos soltos da raiz sem quebrar runtime.
+   - Mantidos na raiz:
+     - `README.md`;
+     - `plan.md`;
+     - `run_fusion.py`.
+   - Criada/uso da pasta `features/`:
+     - `features/features_backteste_dinamica.csv`;
+     - `features/features_backteste_ativo_timeframe.csv`;
+     - `features/features_backteste_modelagem.csv`.
+   - Movidos para `reports/backtests/`:
+     - CSVs e markdowns de `backteste_rapido`;
+     - `ranking_backteste_timeframes.*`;
+     - cache em `reports/backtests/cache`;
+     - `relatorios_por_ativo` em `reports/backtests/relatorios_por_ativo`.
+   - Movidos para `reports/insidebar_gold/`:
+     - `insidebar_gold_*.csv`;
+     - `relatorio_insidebar_gold.md`.
+   - Movidos para `tools/`:
+     - scripts soltos de analise, treino, debug e backtest.
+   - Atualizado `config/fusion_config.yaml`:
+     - `strategies.strategy2.features_path`;
+     - `strategies.strategy3.features_path`;
+     - `strategies.strategy6.features_path`;
+     - `approved_ensembles.tp_sl_report`.
+   - Atualizado `fusion/main.py`:
+     - defaults de `features_path` e `tp_sl_report` apontam para `features/`.
+   - Atualizados scripts para nao recriarem artefatos na raiz:
+     - `tools/backteste_rapido.py`;
+     - `tools/backtest_insidebar_gold.py`;
+     - `tools/gerar_features_backteste.py`;
+     - `tools/build_market_structure_labels_and_ranking.py`.
+   - Validacoes:
+     - raiz ficou com apenas `README.md`, `plan.md` e `run_fusion.py`;
+     - `.\venv\Scripts\python.exe -m compileall fusion\main.py tools\backteste_rapido.py tools\backtest_insidebar_gold.py tools\gerar_features_backteste.py tools\build_market_structure_labels_and_ranking.py tools\train_runtime_models_from_parquet.py tools\train_model.py` passou;
+     - `.\venv\Scripts\python.exe -c "from fusion.main import FusionV2; print('import_ok')"` passou;
+     - parse do YAML confirmou que os arquivos em `features/` existem.
+
+### Dashboard externo - raio-x por ativo
+
+- `dashboard/fusion_dashboard.py` recebeu a aba `Ativo`.
+- A aba permite selecionar um ativo e visualizar:
+  - status operacional atual por timeframe;
+  - ultimas decisoes auditadas por timeframe;
+  - engines avaliadas, estado, direcao, score, confianca, fatores positivos/negativos e avisos;
+  - metricas internas registradas em `features` para a engine selecionada;
+  - heatmap de score por engine/timeframe;
+  - explicabilidade XAI por ativo.
+- Ajuste de usabilidade:
+  - dados longos deixaram de ficar concentrados em uma tabela horizontal;
+  - status do ativo virou tabela vertical;
+  - decisoes aparecem em expansores por timeframe;
+  - engines aparecem em blocos por timeframe;
+  - fatores e metricas internas ficam desmembrados em campos menores.
+- O leitor de `decision_audit` agora preserva `features_json`, `positive_factors`, `negative_factors` e `warnings`.
+- Validacoes:
+  - `.\venv\Scripts\python.exe -m compileall dashboard\fusion_dashboard.py` passou;
+  - `.\venv\Scripts\python.exe tools\check_dashboard_data.py` encontrou `decision_audit_20260521.jsonl` com eventos e engines.
+
+### Auditoria completa para Strategy4/GOLD
+
+- Problema observado:
+  - `GOLD/XAUUSD` aparecia no log operacional;
+  - mas bloqueios/ignorar sinal da `strategy4` nao apareciam no `decision_audit`.
+- Atualizado `fusion/main.py`:
+  - criado `_audit_strategy_block_with_shadow(...)` para auditar bloqueios que acontecem antes de `_execute_strategy_order(...)`;
+  - `_strategy4_insidebar_buy_allowed(...)` agora registra motivo estruturado e detalhes do setup:
+    - `insidebar_false`;
+    - `aguardando_rompimento_mae`;
+    - `sem_rates`;
+    - `sem_tick`;
+    - maxima/minima da mae;
+    - maxima/minima do candle interno;
+    - ask atual.
+- Atualizado `fusion/strategies/estrategia_4.py`:
+  - `sell_ignored` agora grava audit com motivo `sell_ignored:gold_s4_buy_only`;
+  - `cooldown` agora grava audit;
+  - `setup_block` agora grava audit com detalhes do insidebar/rompimento.
+- Validacoes:
+  - `.\venv\Scripts\python.exe -m compileall fusion\main.py fusion\strategies\estrategia_4.py dashboard\fusion_dashboard.py` passou;
+  - import confirmou que `FusionV2._audit_strategy_block_with_shadow` existe.
+
+## Proximas Acoes Recomendadas
+
+1. Reiniciar o robo para gerar eventos com `market_structure` v2, `execution_engine`, `risk_engine`, `portfolio_exposure` v2 e `confidence_calibration` v2.
+2. Melhorar calibracao do `opportunity_engine`, aumentando penalidade para portfolio, correlacao, macro fluxo, risco e contexto fraco/conflitante.
+3. Criar aplicacao real de reducao de lote com base em `risk_engine.position_multiplier_suggested`, depois de forward test.
+3. Criar analise posterior das ordens `ALLOW`, principalmente `EURNZD D1 SELL`.
+4. Criar relatorio por ativo/timeframe para medir onde `market_structure` e confiavel.
+5. Reexecutar `tools/analyze_market_structure_shadow_outcomes.py` apos uma sessao de observacao maior.
+6. Quando a API/Puter estiver disponivel, trocar o provider da ponte local de `mock_heuristic` para o provider real.
+7. Fechar uma posicao manualmente em teste e confirmar motivo `cooldown_pos_fechamento`.
+8. Revisar as combinacoes ainda `sem_feature`, principalmente `D1`, porque nelas nao houve sinal/entrada historica suficiente para criar regra.
+
+## Observacoes
+
+- O `BACKUP` foi concluido e esvaziado apos revisao/migracao.
+- O treino em blocos de experts agora consolida metadados existentes com `--merge-existing-only`.
+- A calibracao operacional e o walk-forward divergem: o ensemble principal segue calibracao operacional, e o walk-forward fica separado ate haver robustez suficiente.
+- Sempre que um lote operacional for finalizado, atualizar este arquivo e os documentos de `fusion_refatorado/docs`.
+

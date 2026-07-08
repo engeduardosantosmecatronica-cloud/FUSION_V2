@@ -1,0 +1,15 @@
+# Event Replay
+
+- Eventos: 3
+- Ciclos: 3
+
+## Ciclos
+
+- Com ORDER_REQUEST: 0
+- Sem ORDER_RESULT: 0
+
+## Recentes
+
+- 2026-05-22T08:33:11.634107 |    | DASHBOARD_UPDATE  | 
+- 2026-05-22T08:31:19.270199 |    | DASHBOARD_UPDATE  | 
+- 2026-05-22T08:26:15.455567 |    | DASHBOARD_UPDATE  | 

@@ -1,0 +1,104 @@
+# Signal Inversion Check
+
+- Horizonte analisado: H3
+- Agrupamento: symbol, timeframe, strategy
+
+- Grupos analisados: 135
+- Suspeitos/provavel inversao: 67
+- Direcao OK: 51
+
+## Suspeitos
+
+- AUDJPY H4 strategy1 | amostras=240 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- USDJPY H4 strategy1 | amostras=175 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- AUDCHF H4 strategy1 | amostras=87 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- AUDSGD M30 strategy1 | amostras=79 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- GBPAUD H4 strategy1 | amostras=45 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- EURMXN M30 strategy1 | amostras=29 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- NZDJPY H4 strategy1 | amostras=25 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- AUDSEK H4 strategy1 | amostras=22 | direto=0.00% | invertido=100.00% | delta=100.00% | provavel_inversao
+- GOLD H4 strategy4 | amostras=227 | direto=2.64% | invertido=97.36% | delta=94.71% | provavel_inversao
+- EURJPY H4 strategy1 | amostras=206 | direto=3.88% | invertido=96.12% | delta=92.23% | provavel_inversao
+- EURCAD H4 strategy2 | amostras=58 | direto=5.17% | invertido=94.83% | delta=89.66% | provavel_inversao
+- CADJPY M15 strategy1 | amostras=77 | direto=5.19% | invertido=94.81% | delta=89.61% | provavel_inversao
+- AUDNZD M30 strategy1 | amostras=135 | direto=6.67% | invertido=93.33% | delta=86.67% | provavel_inversao
+- BTCUSD M30 strategy1 | amostras=29 | direto=6.90% | invertido=93.10% | delta=86.21% | provavel_inversao
+- EURMXN M15 strategy1 | amostras=27 | direto=7.41% | invertido=92.59% | delta=85.19% | provavel_inversao
+- GOLD M5 strategy4 | amostras=69 | direto=8.70% | invertido=91.30% | delta=82.61% | provavel_inversao
+- AUDUSD H4 strategy1 | amostras=111 | direto=9.01% | invertido=90.99% | delta=81.98% | provavel_inversao
+- USDCAD H4 strategy1 | amostras=111 | direto=9.01% | invertido=90.99% | delta=81.98% | provavel_inversao
+- NZDUSD M15 strategy1 | amostras=33 | direto=9.09% | invertido=90.91% | delta=81.82% | provavel_inversao
+- AUDNOK H4 strategy1 | amostras=22 | direto=9.09% | invertido=90.91% | delta=81.82% | provavel_inversao
+- USDJPY H1 strategy1 | amostras=192 | direto=13.02% | invertido=86.98% | delta=73.96% | provavel_inversao
+- CHFDKK H1 strategy1 | amostras=29 | direto=13.79% | invertido=86.21% | delta=72.41% | provavel_inversao
+- USDCAD H1 strategy1 | amostras=80 | direto=15.00% | invertido=85.00% | delta=70.00% | provavel_inversao
+- EURUSD H1 strategy2 | amostras=20 | direto=15.00% | invertido=85.00% | delta=70.00% | provavel_inversao
+- NZDSGD M30 strategy1 | amostras=54 | direto=16.67% | invertido=83.33% | delta=66.67% | provavel_inversao
+- NZDJPY H1 strategy1 | amostras=36 | direto=16.67% | invertido=83.33% | delta=66.67% | provavel_inversao
+- CADJPY M30 strategy1 | amostras=134 | direto=17.16% | invertido=82.84% | delta=65.67% | provavel_inversao
+- NZDJPY M30 strategy1 | amostras=116 | direto=17.24% | invertido=82.76% | delta=65.52% | provavel_inversao
+- DOTUSD H1 strategy1 | amostras=29 | direto=17.24% | invertido=82.76% | delta=65.52% | provavel_inversao
+- ETHUSD M30 strategy1 | amostras=29 | direto=17.24% | invertido=82.76% | delta=65.52% | provavel_inversao
+- AUDCAD H1 strategy1 | amostras=311 | direto=17.36% | invertido=82.64% | delta=65.27% | provavel_inversao
+- EURJPY H1 strategy1 | amostras=197 | direto=18.78% | invertido=81.22% | delta=62.44% | provavel_inversao
+- AUDJPY M30 strategy1 | amostras=339 | direto=19.76% | invertido=80.24% | delta=60.47% | provavel_inversao
+- AUDNZD H1 strategy1 | amostras=105 | direto=20.00% | invertido=80.00% | delta=60.00% | provavel_inversao
+- DOTUSD M30 strategy1 | amostras=25 | direto=20.00% | invertido=80.00% | delta=60.00% | provavel_inversao
+- EURGBP H1 strategy1 | amostras=139 | direto=20.86% | invertido=79.14% | delta=58.27% | provavel_inversao
+- GBPCAD H1 strategy1 | amostras=28 | direto=21.43% | invertido=78.57% | delta=57.14% | provavel_inversao
+- CHFNOK M15 strategy1 | amostras=27 | direto=22.22% | invertido=77.78% | delta=55.56% | provavel_inversao
+- GBPJPY H1 strategy1 | amostras=279 | direto=23.30% | invertido=76.70% | delta=53.41% | provavel_inversao
+- AUDSGD H1 strategy1 | amostras=47 | direto=23.40% | invertido=76.60% | delta=53.19% | provavel_inversao
+- NZDSGD H4 strategy1 | amostras=101 | direto=23.76% | invertido=76.24% | delta=52.48% | provavel_inversao
+- EURCHF M30 strategy1 | amostras=249 | direto=24.50% | invertido=75.50% | delta=51.00% | provavel_inversao
+- AUDCAD M15 strategy1 | amostras=166 | direto=24.70% | invertido=75.30% | delta=50.60% | provavel_inversao
+- BTCUSD M15 strategy1 | amostras=28 | direto=25.00% | invertido=75.00% | delta=50.00% | provavel_inversao
+- CHFJPY H1 strategy1 | amostras=316 | direto=25.32% | invertido=74.68% | delta=49.37% | provavel_inversao
+- EURUSD M30 strategy1 | amostras=122 | direto=25.41% | invertido=74.59% | delta=49.18% | provavel_inversao
+- BTCUSD H1 strategy1 | amostras=29 | direto=27.59% | invertido=72.41% | delta=44.83% | provavel_inversao
+- AUDUSD M30 strategy1 | amostras=322 | direto=27.95% | invertido=72.05% | delta=44.10% | provavel_inversao
+- CHFJPY M30 strategy1 | amostras=48 | direto=29.17% | invertido=70.83% | delta=41.67% | provavel_inversao
+- GBPJPY M30 strategy1 | amostras=48 | direto=29.17% | invertido=70.83% | delta=41.67% | provavel_inversao
+- GBPNZD M30 strategy1 | amostras=41 | direto=29.27% | invertido=70.73% | delta=41.46% | provavel_inversao
+- EURCAD M30 strategy1 | amostras=46 | direto=30.43% | invertido=69.57% | delta=39.13% | provavel_inversao
+- CHFJPY M15 strategy1 | amostras=110 | direto=30.91% | invertido=69.09% | delta=38.18% | provavel_inversao
+- ETHUSD H1 strategy1 | amostras=29 | direto=31.03% | invertido=68.97% | delta=37.93% | provavel_inversao
+- GBPCHF M30 strategy1 | amostras=32 | direto=31.25% | invertido=68.75% | delta=37.50% | provavel_inversao
+- AUDUSD H1 strategy1 | amostras=307 | direto=35.18% | invertido=64.82% | delta=29.64% | provavel_inversao
+- CADJPY H1 strategy1 | amostras=85 | direto=35.29% | invertido=64.71% | delta=29.41% | provavel_inversao
+- USDCAD M30 strategy1 | amostras=141 | direto=36.88% | invertido=63.12% | delta=26.24% | provavel_inversao
+- NZDUSD M30 strategy1 | amostras=103 | direto=36.89% | invertido=63.11% | delta=26.21% | provavel_inversao
+- NZDCAD M30 strategy1 | amostras=29 | direto=37.93% | invertido=62.07% | delta=24.14% | provavel_inversao
+
+## Direcao OK
+
+- NZDSGD H1 strategy1 | amostras=39 | direto=100.00% | invertido=0.00%
+- EURNZD H4 strategy1 | amostras=44 | direto=100.00% | invertido=0.00%
+- CADCHF H4 strategy1 | amostras=83 | direto=100.00% | invertido=0.00%
+- NZDCHF H4 strategy1 | amostras=27 | direto=100.00% | invertido=0.00%
+- NZDCAD H4 strategy1 | amostras=27 | direto=100.00% | invertido=0.00%
+- GBPUSD H1 strategy2 | amostras=23 | direto=100.00% | invertido=0.00%
+- CADCHF M30 strategy2 | amostras=27 | direto=100.00% | invertido=0.00%
+- GBPNZD H4 strategy1 | amostras=28 | direto=100.00% | invertido=0.00%
+- EURUSD H4 strategy1 | amostras=180 | direto=100.00% | invertido=0.00%
+- AUDNZD H4 strategy1 | amostras=240 | direto=100.00% | invertido=0.00%
+- NZDUSD H4 strategy1 | amostras=111 | direto=100.00% | invertido=0.00%
+- EURGBP H4 strategy1 | amostras=224 | direto=99.55% | invertido=0.45%
+- NZDJPY M15 strategy1 | amostras=76 | direto=98.68% | invertido=1.32%
+- EURHKD H1 strategy1 | amostras=29 | direto=96.55% | invertido=3.45%
+- GBPUSD M30 strategy2 | amostras=52 | direto=96.15% | invertido=3.85%
+- EURCHF M15 strategy1 | amostras=31 | direto=93.55% | invertido=6.45%
+- AUDCAD M30 strategy2 | amostras=65 | direto=86.15% | invertido=13.85%
+- AUDCAD M30 strategy3 | amostras=64 | direto=85.94% | invertido=14.06%
+- CADCHF M30 strategy1 | amostras=153 | direto=85.62% | invertido=14.38%
+- GBPUSD M30 strategy1 | amostras=177 | direto=84.75% | invertido=15.25%
+- EURSEK M30 strategy1 | amostras=29 | direto=82.76% | invertido=17.24%
+- NZDCHF H1 strategy1 | amostras=37 | direto=81.08% | invertido=18.92%
+- AUDCAD H4 strategy1 | amostras=89 | direto=80.90% | invertido=19.10%
+- AUDCAD M30 strategy1 | amostras=334 | direto=80.54% | invertido=19.46%
+- AUDCHF M30 strategy1 | amostras=25 | direto=80.00% | invertido=20.00%
+- GOLD M15 strategy4 | amostras=82 | direto=76.83% | invertido=23.17%
+- EURMXN H1 strategy1 | amostras=29 | direto=75.86% | invertido=24.14%
+- GOLD M30 strategy4 | amostras=139 | direto=75.54% | invertido=24.46%
+- EURHUF M15 strategy1 | amostras=20 | direto=75.00% | invertido=25.00%
+- EURNZD H1 strategy1 | amostras=43 | direto=74.42% | invertido=25.58%

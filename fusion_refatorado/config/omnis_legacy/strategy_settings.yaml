@@ -1,0 +1,94 @@
+# strategy_settings.yaml
+
+SIMBOLOS_ALVO: # Lista mestre de todos os ativos que o robô monitora
+- BCHUSD
+- BTCUSD
+- ETHUSD
+- AUDJPY
+- EURUSD
+- USDMXN
+- GOLD
+
+TIMEFRAMES:
+- H1 # O robô opera no gráfico de 1 hora
+
+asset_classes:
+  crypto:
+    - BCHUSD
+    - BTCUSD
+    - ETHUSD
+  forex:
+    - AUDJPY
+    - EURUSD
+    - USDMXN
+  metals:
+    - GOLD
+
+execution:
+  analysis_count: 500 # Quantidade de barras históricas analisadas para cada decisão
+  refresh_seconds: 15 # O robô "acorda" a cada 15 segundos para checar o mercado
+
+ml_models: # Configuração específica do cérebro XGBoost
+  xgboost:
+    params:
+      colsample_bytree: 0.8 # Usa 80% das colunas para evitar "viciar" em um só indicador
+      learning_rate: 0.03 # Velocidade de aprendizado (baixa para maior precisão)
+      max_depth: 4 # Complexidade da árvore (4 níveis evita captar ruído)
+      n_estimators: 200 # Serão criadas 200 árvores de decisão
+      num_class: 3 # Classes de saída: Compra, Venda ou Neutro
+      objective: multi:softprob # Retorna a probabilidade (0 a 1) para cada classe
+
+platforms: # Configuração das conexões com as corretoras
+  mt5:
+    capital: 2661.55 # Saldo atual na conta do MetaTrader 5
+    enabled: true
+    max_positions: 12
+
+risk: # O CORAÇÃO DA SOBREVIVÊNCIA (Gestão de Dinheiro)
+  cooldown_seconds: 60 # Tempo de espera após fechar uma ordem para abrir outra no mesmo ativo
+  max_daily_risk: 0.03 # Se perder 3% do capital no dia, o robô para (Circuit Breaker)
+  max_positions_total: 12 # Nunca terá mais que 12 ordens abertas no total do sistema
+  max_positions_by_class: # Limites por setor (evita exposição excessiva em um só mercado)
+    crypto: 10
+    forex: 10
+    metals: 1
+  min_lot: 0.01 # Lote mínimo permitido
+  risk_per_trade: 0.01 # Arrisca 1% do capital por cada operação
+  trailing_mode: "FIXO" # O Stop Móvel segue uma distância fixa
+  trailing_activation: 10 # Ativa o Trailing Stop após 10 pips de lucro (Forex)
+  trailing_distance: 5 # Mantém o stop a 5 pips de distância do preço atual
+  # Configurações específicas de trailing para Cripto e Ouro (devido à volatilidade maior)
+  trailing_crypto_activation: 2000 
+  trailing_gold_activation: 100
+  # Fatores ATR para Stop Loss Dinâmico (ajusta o stop conforme a "bagunça" do mercado)
+  atr_factors: {"start": 2.2, "step": 1.5, "lock": 1.0}
+  stoploss_fixed_usd: 3 # Stop máximo de 3 dólares por ordem (proteção extra)
+  trailing_fixed_usd: 1 # Move o stop a cada 1 dólar de lucro
+
+symbol_config: # Configurações individuais por ativo (personalização fina)
+  AUDJPY:
+    min_lot: 0.01
+  BCHUSD:
+    min_lot: 1.00 # Lote mínimo maior para Bitcoin Cash
+
+trading: # A LÓGICA DE FILTRAGEM (As barreiras que o preço deve vencer)
+  filters:
+    F0_SINGLE_POSITION: true # Não abre duas ordens iguais no mesmo ativo
+    F1_COOLDOWN: true # Respeita o tempo de descanso
+    F2_MIN_CONFIDENCE: false # Desativado: não exige score mínimo da IA (por enquanto)
+    F3_PULLBACK_ATR: true # Só entra se o preço fizer um pequeno recuo (melhor preço)
+    F4_TREND_ALIGNMENT: true # Só opera a favor da tendência principal
+    F7_VOLATILITY_BLOCK: true # Bloqueia entradas em momentos de loucura no mercado
+    F8_RISK_MANAGER: true # Filtro final do gestor de risco
+    F10_PRICE_IMPROVEMENT: true # Busca sempre uma entrada melhor que o preço atual (limite)
+  
+  models_by_asset_class: # Peso da IA em cada setor
+    crypto:
+      model: qlib_crypto
+      weight: 0.05 # O Qlib influe apenas 5% na decisão de Cripto
+  
+  max_spread_pips: 3.6 # Não entra se o custo da corretora (spread) for maior que 3.6 pips
+  thresholds: # Níveis de decisão (Sensibilidade)
+    buy: 0.15 # Score necessário para comprar
+    sell: 0.15 # Score necessário para vender
+  use_global_v2: true # Mantém a lógica principal V2 ativa

@@ -1,0 +1,57 @@
+{
+  "name": "Candle",
+  "type": "object",
+  "properties": {
+    "symbol": {
+      "type": "string",
+      "description": "Trading symbol (e.g. EURUSD, BTCUSD)"
+    },
+    "timeframe": {
+      "type": "string",
+      "enum": [
+        "M1",
+        "M5",
+        "M15",
+        "M30",
+        "H1",
+        "H4",
+        "D1"
+      ],
+      "description": "Candle timeframe"
+    },
+    "open": {
+      "type": "number",
+      "description": "Open price"
+    },
+    "high": {
+      "type": "number",
+      "description": "High price"
+    },
+    "low": {
+      "type": "number",
+      "description": "Low price"
+    },
+    "close": {
+      "type": "number",
+      "description": "Close price"
+    },
+    "volume": {
+      "type": "number",
+      "description": "Volume"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Candle timestamp"
+    }
+  },
+  "required": [
+    "symbol",
+    "timeframe",
+    "open",
+    "high",
+    "low",
+    "close",
+    "timestamp"
+  ]
+}

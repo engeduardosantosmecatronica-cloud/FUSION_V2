@@ -1,0 +1,15 @@
+# Core runtime
+numpy
+pandas
+joblib
+PyYAML
+MetaTrader5
+
+# Modeling / ML
+scikit-learn
+lightgbm
+catboost
+
+# Qt terminal / charting
+PySide6
+pyqtgraph

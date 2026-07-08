@@ -1,0 +1,566 @@
+﻿{
+    "enabled":  true,
+    "notes":  [
+                  "Configuracoes operacionais lidas durante o runtime, sem reiniciar o Fusion.",
+                  "Use null ou remova campos para manter o valor do fusion_config.yaml.",
+                  "Adicionar simbolo completamente novo ainda pode exigir restart se o modelo/simbolo nao foi carregado no startup.",
+                  "Relaxamento aplicado em EURCHF, AUDNZD, EURGBP, EURJPY e NZDSGD no H4 com nomes tecnicos dos filtros usados pelo codigo.",
+                  "Market briefing e direcao EMA M5/M15 ficam em shadow para nao travar sinais bons durante calibracao.",
+                  "2026-06-11: ativado bloqueio de compra em topo/venda em fundo sem rompimento para evitar entradas como SELL no fundo GBPUSD M15."
+              ],
+    "loop":  {
+                 "min_cycle_seconds":  60
+             },
+    "trading":  {
+                    "allow_new_orders":  true,
+                    "execution_mode":  "automatic",
+                    "manual_approval_enabled":  false,
+                    "max_positions":  1,
+                    "max_positions_per_symbol":  1,
+                    "max_daily_loss_money":  25.0,
+                    "max_floating_loss_money":  25.0
+                },
+    "signals":  {
+                    "buy_threshold":  0.55,
+                    "sell_threshold":  0.55,
+                    "confidence_filter":  0.22,
+                    "min_signal_strength":  0.05
+                },
+    "symbol_timeframe_policies":  {
+                                      "default":  {
+                                                      "filters":  {
+                                                                      "required_filters":  [
+                                                                                               "volatility_engine",
+                                                                                               "market_structure",
+                                                                                               "entry_timing",
+                                                                                               "risk_engine",
+                                                                                               "portfolio_exposure",
+                                                                                               "portfolio_correlation",
+                                                                                               "candle_price_confirmation"
+                                                                                           ],
+                                                                      "soft_filters":  [
+                                                                                           "market_alignment",
+                                                                                           "timeframe_consensus"
+                                                                                       ]
+                                                                  },
+                                                      "signals":  {
+                                                                      "buy_threshold":  0.55,
+                                                                      "sell_threshold":  0.55,
+                                                                      "confidence_filter":  0.22,
+                                                                      "min_signal_strength":  0.05
+                                                                  }
+                                                  },
+                                      "GBPJPY":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.22,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            },
+                                                     "M30":  {
+                                                                 "signals":  {
+                                                                                 "buy_threshold":  0.53,
+                                                                                 "sell_threshold":  0.53,
+                                                                                 "confidence_filter":  0.22,
+                                                                                 "min_signal_strength":  0.05
+                                                                             }
+                                                             }
+                                                 },
+                                      "USDJPY":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.22,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            },
+                                                     "M30":  {
+                                                                 "signals":  {
+                                                                                 "buy_threshold":  0.53,
+                                                                                 "sell_threshold":  0.53,
+                                                                                 "confidence_filter":  0.22,
+                                                                                 "min_signal_strength":  0.05
+                                                                             }
+                                                             }
+                                                 },
+                                      "AUDCAD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "AUDCHF":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "EURUSD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "GBPUSD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "USDCAD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "EURAUD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "EURNZD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "NZDCAD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "CADCHF":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.22,
+                                                                                     "min_signal_strength":  0.05
+                                                                                 }
+                                                                 },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.53,
+                                                                                "sell_threshold":  0.53,
+                                                                                "confidence_filter":  0.23,
+                                                                                "min_signal_strength":  0.05
+                                                                            }
+                                                            }
+                                                 },
+                                      "BTCUSD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.58,
+                                                                                     "sell_threshold":  0.58,
+                                                                                     "confidence_filter":  0.3,
+                                                                                     "min_signal_strength":  0.08
+                                                                                 }
+                                                                 },
+                                                     "M15":  {
+                                                                 "signals":  {
+                                                                                 "buy_threshold":  0.58,
+                                                                                 "sell_threshold":  0.58,
+                                                                                 "confidence_filter":  0.36,
+                                                                                 "min_signal_strength":  0.1
+                                                                             }
+                                                             },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.57,
+                                                                                "sell_threshold":  0.57,
+                                                                                "confidence_filter":  0.35,
+                                                                                "min_signal_strength":  0.1
+                                                                            }
+                                                            }
+                                                 },
+                                      "ETHUSD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.58,
+                                                                                     "sell_threshold":  0.58,
+                                                                                     "confidence_filter":  0.3,
+                                                                                     "min_signal_strength":  0.08
+                                                                                 }
+                                                                 },
+                                                     "M15":  {
+                                                                 "signals":  {
+                                                                                 "buy_threshold":  0.58,
+                                                                                 "sell_threshold":  0.58,
+                                                                                 "confidence_filter":  0.35,
+                                                                                 "min_signal_strength":  0.1
+                                                                             }
+                                                             },
+                                                     "H1":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.57,
+                                                                                "sell_threshold":  0.57,
+                                                                                "confidence_filter":  0.34,
+                                                                                "min_signal_strength":  0.1
+                                                                            }
+                                                            }
+                                                 },
+                                      "EURCHF":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.2,
+                                                                                     "min_signal_strength":  0.04
+                                                                                 }
+                                                                 },
+                                                     "H4":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.51,
+                                                                                "sell_threshold":  0.51,
+                                                                                "confidence_filter":  0.15,
+                                                                                "min_signal_strength":  0.03
+                                                                            },
+                                                                "filters":  {
+                                                                                "required_filters":  [
+                                                                                                         "volatility_engine",
+                                                                                                         "risk_engine",
+                                                                                                         "portfolio_exposure"
+                                                                                                     ],
+                                                                                "soft_filters":  [
+                                                                                                     "market_alignment",
+                                                                                                     "timeframe_consensus",
+                                                                                                     "candle_price_confirmation",
+                                                                                                     "macro_flow",
+                                                                                                     "ema_alignment",
+                                                                                                     "ema_lower_timeframes_direction",
+                                                                                                     "entry_timing",
+                                                                                                     "portfolio_correlation"
+                                                                                                 ]
+                                                                            }
+                                                            }
+                                                 },
+                                      "AUDNZD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.2,
+                                                                                     "min_signal_strength":  0.04
+                                                                                 }
+                                                                 },
+                                                     "H4":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.51,
+                                                                                "sell_threshold":  0.51,
+                                                                                "confidence_filter":  0.15,
+                                                                                "min_signal_strength":  0.03
+                                                                            },
+                                                                "filters":  {
+                                                                                "required_filters":  [
+                                                                                                         "volatility_engine",
+                                                                                                         "risk_engine",
+                                                                                                         "portfolio_exposure"
+                                                                                                     ],
+                                                                                "soft_filters":  [
+                                                                                                     "market_alignment",
+                                                                                                     "timeframe_consensus",
+                                                                                                     "candle_price_confirmation",
+                                                                                                     "macro_flow",
+                                                                                                     "ema_alignment",
+                                                                                                     "ema_lower_timeframes_direction",
+                                                                                                     "entry_timing",
+                                                                                                     "portfolio_correlation"
+                                                                                                 ]
+                                                                            }
+                                                            }
+                                                 },
+                                      "EURGBP":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.2,
+                                                                                     "min_signal_strength":  0.04
+                                                                                 }
+                                                                 },
+                                                     "H4":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.51,
+                                                                                "sell_threshold":  0.51,
+                                                                                "confidence_filter":  0.15,
+                                                                                "min_signal_strength":  0.03
+                                                                            },
+                                                                "filters":  {
+                                                                                "required_filters":  [
+                                                                                                         "volatility_engine",
+                                                                                                         "risk_engine",
+                                                                                                         "portfolio_exposure"
+                                                                                                     ],
+                                                                                "soft_filters":  [
+                                                                                                     "market_alignment",
+                                                                                                     "timeframe_consensus",
+                                                                                                     "candle_price_confirmation",
+                                                                                                     "macro_flow",
+                                                                                                     "ema_alignment",
+                                                                                                     "ema_lower_timeframes_direction",
+                                                                                                     "entry_timing",
+                                                                                                     "portfolio_correlation"
+                                                                                                 ]
+                                                                            }
+                                                            }
+                                                 },
+                                      "EURJPY":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.2,
+                                                                                     "min_signal_strength":  0.04
+                                                                                 }
+                                                                 },
+                                                     "H4":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.51,
+                                                                                "sell_threshold":  0.51,
+                                                                                "confidence_filter":  0.15,
+                                                                                "min_signal_strength":  0.03
+                                                                            },
+                                                                "filters":  {
+                                                                                "required_filters":  [
+                                                                                                         "volatility_engine",
+                                                                                                         "risk_engine",
+                                                                                                         "portfolio_exposure"
+                                                                                                     ],
+                                                                                "soft_filters":  [
+                                                                                                     "market_alignment",
+                                                                                                     "timeframe_consensus",
+                                                                                                     "candle_price_confirmation",
+                                                                                                     "macro_flow",
+                                                                                                     "ema_alignment",
+                                                                                                     "ema_lower_timeframes_direction",
+                                                                                                     "entry_timing",
+                                                                                                     "portfolio_correlation"
+                                                                                                 ]
+                                                                            }
+                                                            }
+                                                 },
+                                      "NZDSGD":  {
+                                                     "default":  {
+                                                                     "signals":  {
+                                                                                     "buy_threshold":  0.54,
+                                                                                     "sell_threshold":  0.54,
+                                                                                     "confidence_filter":  0.2,
+                                                                                     "min_signal_strength":  0.04
+                                                                                 }
+                                                                 },
+                                                     "H4":  {
+                                                                "signals":  {
+                                                                                "buy_threshold":  0.51,
+                                                                                "sell_threshold":  0.51,
+                                                                                "confidence_filter":  0.15,
+                                                                                "min_signal_strength":  0.03
+                                                                            },
+                                                                "filters":  {
+                                                                                "required_filters":  [
+                                                                                                         "volatility_engine",
+                                                                                                         "risk_engine",
+                                                                                                         "portfolio_exposure"
+                                                                                                     ],
+                                                                                "soft_filters":  [
+                                                                                                     "market_alignment",
+                                                                                                     "timeframe_consensus",
+                                                                                                     "candle_price_confirmation",
+                                                                                                     "macro_flow",
+                                                                                                     "ema_alignment",
+                                                                                                     "ema_lower_timeframes_direction",
+                                                                                                     "entry_timing",
+                                                                                                     "portfolio_correlation"
+                                                                                                 ]
+                                                                            }
+                                                            }
+                                                 }
+                                  },
+    "symbols":  {
+                    "mode":  "exclude",
+                    "include":  [
+
+                                ],
+                    "exclude":  [
+
+                                ]
+                },
+    "global_tp_sl":  {
+                         "use_runtime_override":  false,
+                         "tp_points":  0,
+                         "sl_points":  0
+                     },
+    "symbol_tp_sl":  {
+                         "BTCUSD":  {
+                                        "tp_points":  10000,
+                                        "sl_points":  5000
+                                    },
+                         "ETHUSD":  {
+                                        "tp_points":  3500,
+                                        "sl_points":  1800
+                                    }
+                     },
+    "risk_by_symbol":  {
+                           "BTCUSD":  {
+                                          "allow_new_orders":  true,
+                                          "max_positions":  1,
+                                          "trailing_activation_points":  8000,
+                                          "trailing_distance_points":  4000
+                                      },
+                           "ETHUSD":  {
+                                          "allow_new_orders":  true,
+                                          "max_positions":  1,
+                                          "trailing_activation_points":  2500,
+                                          "trailing_distance_points":  1200
+                                      }
+                       },
+    "filters":  {
+                    "block_top_bottom_without_breakout":  true,
+                    "portfolio_exposure_mode":  "shadow",
+                    "portfolio_correlation_mode":  "shadow",
+                    "market_briefing_mode":  "shadow",
+                    "market_regime_mode":  "shadow",
+                    "volatility_engine_mode":  "shadow",
+                    "session_context_mode":  "shadow",
+                    "macro_flow_mode":  "shadow",
+                    "market_structure_mode":  "block",
+                    "opportunity_engine_mode":  "shadow",
+                    "execution_engine_mode":  "shadow",
+                    "entry_timing_mode":  "block",
+                    "risk_engine_mode":  "shadow",
+                    "ema_alignment_mode":  "shadow",
+                    "context_engine_mode":  "shadow",
+                    "context_brain_mode":  "shadow",
+                    "ema_lower_timeframes_direction_mode":  "shadow",
+                    "candle_price_confirmation_mode":  "block",
+                    "market_alignment_mode":  "shadow",
+                    "timeframe_consensus_mode":  "shadow",
+                    "market_alignment_block_states":  [
+                                                          "countertrend",
+                                                          "structural_conflict"
+                                                      ],
+                    "timeframe_consensus_block_states":  [
+                                                             "counter_consensus",
+                                                             "structural_conflict"
+                                                         ]
+                },
+    "trailing":  {
+                     "enabled":  true
+                 }
+}
