@@ -30,10 +30,10 @@ public sealed class MainForm : Form
     private Form? _readingWindow;
     private readonly System.Windows.Forms.Timer _marketRefreshTimer = new() { Interval = 5000 };
     private readonly System.Windows.Forms.Timer _simulationTimer = new();
-    private readonly TextBox _symbolCombo = new() { Width = 130, Text = "AUDUSD" };
-    private readonly TextBox _timeframeCombo = new() { Width = 76, Text = "M15" };
-    private readonly NumericUpDown _rightMarginSpin = new() { Width = 58, Minimum = 0, Maximum = 120, Value = 18 };
-    private readonly Label _connection = new() { AutoSize = true, ForeColor = TerminalTheme.Muted, Padding = new Padding(12, 6, 0, 0) };
+    private readonly TextBox _symbolCombo = new() { Width = 118, Text = "AUDUSD" };
+    private readonly TextBox _timeframeCombo = new() { Width = 62, Text = "M15" };
+    private readonly NumericUpDown _rightMarginSpin = new() { Width = 54, Minimum = 0, Maximum = 120, Value = 18 };
+    private readonly Label _connection = new() { AutoSize = true, ForeColor = TerminalTheme.Muted, Padding = new Padding(8, 6, 0, 0) };
     private readonly Button _robotButton;
     private readonly Label _robotStatus = new() { AutoSize = true, ForeColor = TerminalTheme.Muted, Padding = new Padding(8, 6, 0, 0), Text = "Robo: parado" };
     private readonly string _repoRoot;
@@ -65,7 +65,7 @@ public sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "Fusion Terminal Windows";
+        Text = "Fusion Control Center";
         Width = 1580;
         Height = 920;
         MinimumSize = new Size(1120, 680);
@@ -73,7 +73,7 @@ public sealed class MainForm : Form
         WindowState = FormWindowState.Normal;
         BackColor = TerminalTheme.Background;
         ForeColor = TerminalTheme.Text;
-        Font = new Font("Segoe UI", 9f);
+        Font = new Font("Segoe UI", 9.25f);
         AutoScroll = false;
 
         Program.StartupTrace("MainForm base properties ok");
@@ -92,7 +92,9 @@ public sealed class MainForm : Form
         _layersPanel = new EventTablePanel(_repoRoot, EventTableMode.Layers);
         _eventsPanel = new EventTablePanel(_repoRoot, EventTableMode.Events);
         Program.StartupTrace("creating loaders/panels ok");
-        _robotButton = Button("Ligar robo", 96);
+        _robotButton = Button("Iniciar Robo", 112);
+        _robotButton.BackColor = TerminalTheme.PositiveSoft;
+        _robotButton.ForeColor = TerminalTheme.Text;
         _robotButton.Click += (_, _) => ToggleFusionRobot();
         _marketRefreshTimer.Tick += (_, _) => QueueMarketDataLoad(refreshSymbols: false);
         _simulationTimer.Tick += (_, _) =>
@@ -120,11 +122,11 @@ public sealed class MainForm : Form
             ColumnCount = 1,
             BackColor = TerminalTheme.Background,
         };
-        shell.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
         shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         shell.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        shell.Controls.Add(MainMenuStrip, 0, 0);
+        shell.Controls.Add(BuildHeader(), 0, 0);
         shell.Controls.Add(BuildToolbar(), 0, 1);
         shell.Controls.Add(BuildWorkspace(), 0, 2);
         shell.Controls.Add(BuildStatusBar(), 0, 3);
@@ -145,7 +147,7 @@ public sealed class MainForm : Form
     {
         Program.StartupTrace("InitializeMarketData start");
         _statusLeft.Text = "Carregando dados em segundo plano...";
-        _connection.Text = "MT5/Fusion: ativo";
+        _connection.Text = "MT5: iniciando ponte";
         StartMt5BridgeIfAvailable();
         QueueMarketDataLoad(refreshSymbols: true);
         _marketRefreshTimer.Start();
@@ -162,15 +164,95 @@ public sealed class MainForm : Form
         };
 
         menu.Items.Add(MenuItem("Arquivo", "Abrir workspace", "Salvar layout", "Sair"));
-        menu.Items.Add(MenuItem("Mercado", "Conectar MT5", "Recarregar candles", "Fonte de dados"));
+        menu.Items.Add(MenuItem("Mercado", "Reconectar MT5", "Atualizar candles", "Fonte de dados"));
         menu.Items.Add(BuildInsertMenu());
         menu.Items.Add(BuildToolsMenu());
-        menu.Items.Add(MenuItem("Simulacao", "Simulacao individual", "Resultado da simulacao", "Configurar trailing"));
-        menu.Items.Add(MenuItem("Backtest", "Backtest visual por periodo", "Replay historico", "Banco de estrategias"));
-        menu.Items.Add(MenuItem("Camadas", "Regime", "Estrutura", "Contexto", "Risco", "Portfolio", "Consenso"));
+        menu.Items.Add(MenuItem("Analise", "Probabilidades", "Leitura tecnica", "Matriz operacional", "Camadas"));
+        menu.Items.Add(MenuItem("Backtest", "Backtest visual", "Replay historico", "Banco de estrategias"));
         menu.Items.Add(MenuItem("Alertas", "Alertas sonoros", "Alertas visuais", "Historico"));
-        menu.Items.Add(MenuItem("Propriedades", "Cores", "Grade", "Candles", "Linhas"));
         return menu;
+    }
+
+    private Control BuildHeader()
+    {
+        var header = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Background,
+            Padding = new Padding(12, 8, 12, 6),
+            RowCount = 1,
+            ColumnCount = 3,
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 330));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 410));
+
+        var brand = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Background,
+            RowCount = 2,
+            ColumnCount = 1,
+        };
+        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        brand.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+        brand.Controls.Add(new Label
+        {
+            Text = "Fusion Control Center",
+            Dock = DockStyle.Fill,
+            ForeColor = TerminalTheme.Text,
+            Font = new Font("Segoe UI Semibold", 15f, FontStyle.Bold),
+            TextAlign = ContentAlignment.BottomLeft,
+        }, 0, 0);
+        brand.Controls.Add(new Label
+        {
+            Text = "Execucao, leitura operacional e monitoramento MT5",
+            Dock = DockStyle.Fill,
+            ForeColor = TerminalTheme.Muted,
+            Font = new Font("Segoe UI", 8.75f),
+            TextAlign = ContentAlignment.TopLeft,
+        }, 0, 1);
+
+        var quickMenu = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Background,
+            Padding = new Padding(4, 10, 4, 4),
+            WrapContents = false,
+        };
+        quickMenu.Controls.Add(HeaderButton("Grafico", 76, ShowChartInWorkspace));
+        quickMenu.Controls.Add(HeaderButton("Probabilidades", 118, () => SelectReadingTabInWorkspace("Probabilidades")));
+        quickMenu.Controls.Add(HeaderButton("Matriz", 78, () => SelectReadingTabInWorkspace("Matriz Operacional")));
+        quickMenu.Controls.Add(HeaderButton("Sinais", 72, () => SelectReadingTabInWorkspace("Sinais")));
+        quickMenu.Controls.Add(HeaderButton("Ordens", 74, () => SelectReadingTabInWorkspace("Ordens")));
+        quickMenu.Controls.Add(HeaderButton("Backtest", 82, () => SelectBottomTab("Backtest")));
+
+        var status = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = TerminalTheme.Panel,
+            Padding = new Padding(10, 5, 10, 5),
+            RowCount = 2,
+            ColumnCount = 2,
+        };
+        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45));
+        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55));
+        status.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        status.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        status.Paint += (_, e) =>
+        {
+            using var pen = new Pen(TerminalTheme.Border);
+            e.Graphics.DrawRectangle(pen, 0, 0, status.Width - 1, status.Height - 1);
+        };
+        status.Controls.Add(StatusCaption("ROBO"), 0, 0);
+        status.Controls.Add(StatusCaption("DADOS"), 1, 0);
+        status.Controls.Add(_robotStatus, 0, 1);
+        status.Controls.Add(_connection, 1, 1);
+
+        header.Controls.Add(brand, 0, 0);
+        header.Controls.Add(quickMenu, 1, 0);
+        header.Controls.Add(status, 2, 0);
+        return header;
     }
 
     private ToolStripMenuItem BuildToolsMenu()
@@ -220,12 +302,12 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.PanelAlt,
-            Padding = new Padding(8, 7, 8, 6),
+            Padding = new Padding(10, 8, 10, 7),
             WrapContents = false,
         };
 
-        var refresh = Button("Atualizar", 90);
-        var latest = Button("Fim", 56);
+        var refresh = Button("Atualizar dados", 112);
+        var latest = Button("Ir ao ultimo", 92);
         var zoomIn = Button("+", 34);
         var zoomOut = Button("-", 34);
         refresh.Click += (_, _) => RequestMarketDataLoad(refreshSymbols: true);
@@ -248,20 +330,10 @@ public sealed class MainForm : Form
         };
         _rightMarginSpin.ValueChanged += (_, _) => _chart.RightMarginCandles = (int)_rightMarginSpin.Value;
 
-        toolbar.Controls.Add(Label("Ativo"));
-        toolbar.Controls.Add(_symbolCombo);
-        toolbar.Controls.Add(Label("Timeframe"));
-        toolbar.Controls.Add(_timeframeCombo);
-        toolbar.Controls.Add(Label("Margem"));
-        toolbar.Controls.Add(_rightMarginSpin);
-        toolbar.Controls.Add(Label("Zoom"));
-        toolbar.Controls.Add(zoomIn);
-        toolbar.Controls.Add(zoomOut);
-        toolbar.Controls.Add(refresh);
-        toolbar.Controls.Add(latest);
-        toolbar.Controls.Add(_robotButton);
-        toolbar.Controls.Add(_robotStatus);
-        toolbar.Controls.Add(_connection);
+        toolbar.Controls.Add(ToolGroup("Mercado", Label("Ativo"), _symbolCombo, Label("TF"), _timeframeCombo, refresh));
+        toolbar.Controls.Add(ToolGroup("Grafico", Label("Zoom"), zoomOut, zoomIn, latest, Label("Margem"), _rightMarginSpin));
+        toolbar.Controls.Add(ToolGroup("Execucao", _robotButton));
+        toolbar.Controls.Add(ToolGroup("Paineis", HeaderButton("Leitura", 76, () => SelectReadingTabInWorkspace("Probabilidades")), HeaderButton("Eventos", 76, () => SelectReadingTabInWorkspace("Eventos")), HeaderButton("Simulacao", 86, () => SelectBottomTab("Simulacao"))));
         return toolbar;
     }
 
@@ -274,7 +346,7 @@ public sealed class MainForm : Form
             ColumnCount = 3,
             RowCount = 2,
         };
-        _leftDockColumn = new ColumnStyle(SizeType.Absolute, 235);
+        _leftDockColumn = new ColumnStyle(SizeType.Absolute, 260);
         _rightDockColumn = new ColumnStyle(SizeType.Absolute, 0);
         _bottomDockRow = new RowStyle(SizeType.Absolute, 230);
         main.ColumnStyles.Add(_leftDockColumn);
@@ -310,10 +382,11 @@ public sealed class MainForm : Form
 
     private Control BuildNavigatorPanel()
     {
-        var panel = PanelWithHeader("Navegador", "Mercado, modulos e estudos", out var content, () => SetLeftDockVisible(false));
+        var panel = PanelWithHeader("Workspace", "Ativos, leituras e ferramentas", out var content, () => SetLeftDockVisible(false));
         _navigator.BackColor = TerminalTheme.Panel;
         _navigator.ForeColor = TerminalTheme.Text;
-        _navigator.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+        _navigator.Font = new Font("Segoe UI", 9.25f, FontStyle.Regular);
+        _navigator.ItemHeight = 27;
         _navigator.HideSelection = false;
         _navigator.ShowLines = false;
         _navigator.ShowRootLines = false;
@@ -545,67 +618,122 @@ public sealed class MainForm : Form
     {
         Text = text,
         AutoSize = true,
-        ForeColor = Color.White,
-        Padding = new Padding(12, 6, 4, 0),
+        ForeColor = TerminalTheme.Muted,
+        Font = new Font("Segoe UI", 8.75f, FontStyle.Bold),
+        Padding = new Padding(8, 7, 3, 0),
     };
 
-    private static Button Button(string text, int width) => new()
+    private static Label StatusCaption(string text) => new()
     {
         Text = text,
-        Width = width,
-        Height = 28,
-        FlatStyle = FlatStyle.Flat,
-        BackColor = TerminalTheme.Panel,
-        ForeColor = TerminalTheme.Text,
+        Dock = DockStyle.Fill,
+        ForeColor = TerminalTheme.Muted,
+        Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+        TextAlign = ContentAlignment.BottomLeft,
     };
+
+    private static Button Button(string text, int width)
+    {
+        var button = new Button
+        {
+            Text = text,
+            Width = width,
+            Height = 30,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = TerminalTheme.PanelSoft,
+            ForeColor = TerminalTheme.Text,
+            Font = new Font("Segoe UI", 8.75f, FontStyle.Bold),
+            Margin = new Padding(4, 2, 4, 2),
+        };
+        button.FlatAppearance.BorderColor = TerminalTheme.Border;
+        button.FlatAppearance.MouseOverBackColor = TerminalTheme.PrimarySoft;
+        return button;
+    }
+
+    private static Button HeaderButton(string text, int width, Action onClick)
+    {
+        var button = Button(text, width);
+        button.Height = 30;
+        button.BackColor = TerminalTheme.Background;
+        button.Click += (_, _) => onClick();
+        return button;
+    }
+
+    private static Control ToolGroup(string title, params Control[] controls)
+    {
+        var group = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            Height = 34,
+            BackColor = TerminalTheme.Panel,
+            Padding = new Padding(8, 2, 8, 2),
+            Margin = new Padding(0, 0, 8, 0),
+            WrapContents = false,
+        };
+        group.Paint += (_, e) =>
+        {
+            using var pen = new Pen(TerminalTheme.Border);
+            e.Graphics.DrawRectangle(pen, 0, 0, group.Width - 1, group.Height - 1);
+        };
+        group.Controls.Add(new Label
+        {
+            Text = title,
+            AutoSize = true,
+            ForeColor = TerminalTheme.Primary,
+            Font = new Font("Segoe UI", 8.25f, FontStyle.Bold),
+            Padding = new Padding(0, 7, 8, 0),
+            Margin = new Padding(0),
+        });
+        foreach (var control in controls)
+        {
+            control.Margin = new Padding(2, 1, 2, 1);
+            group.Controls.Add(control);
+        }
+        return group;
+    }
 
     private void ConfigureNavigator()
     {
         _navigator.Nodes.Clear();
-        _navigator.Nodes.Add(new TreeNode("Grafico") { Tag = "view:chart" });
-        _navigator.Nodes.Add(new TreeNode("Leitura")
+        _navigator.Nodes.Add(new TreeNode("Visao principal")
         {
             Nodes =
             {
+                new TreeNode("Grafico de mercado") { Tag = "view:chart" },
                 new TreeNode("Probabilidades") { Tag = "reading:Probabilidades" },
-                new TreeNode("Sinais") { Tag = "reading:Sinais" },
-                new TreeNode("Ordens") { Tag = "reading:Ordens" },
-                new TreeNode("Camadas") { Tag = "reading:Camadas" },
-                new TreeNode("Eventos") { Tag = "reading:Eventos" },
+                new TreeNode("Leitura tecnica") { Tag = "reading:Leitura Tecnica" },
+                new TreeNode("Matriz operacional") { Tag = "reading:Matriz Operacional" },
             },
         });
-        _navigator.Nodes.Add(new TreeNode("Ativos") { Name = "Ativos" });
-        _navigator.Nodes.Add(new TreeNode("Indicadores")
+        _navigator.Nodes.Add(new TreeNode("Monitoramento")
+        {
+            Nodes =
+            {
+                new TreeNode("Sinais e alertas") { Tag = "reading:Sinais" },
+                new TreeNode("Ordens e posicoes") { Tag = "reading:Ordens" },
+                new TreeNode("Camadas de decisao") { Tag = "reading:Camadas" },
+                new TreeNode("Eventos do sistema") { Tag = "reading:Eventos" },
+            },
+        });
+        _navigator.Nodes.Add(new TreeNode("Ativos monitorados") { Name = "Ativos" });
+        _navigator.Nodes.Add(new TreeNode("Ferramentas do grafico")
         {
             Nodes =
             {
                 new TreeNode("EMA 9/21/50"),
                 new TreeNode("MA 9/21/50"),
+                new TreeNode("Remover indicadores"),
             },
         });
-        _navigator.Nodes.Add(new TreeNode("Estrategias")
+        _navigator.Nodes.Add(new TreeNode("Pesquisa e teste")
         {
             Nodes =
             {
-                new TreeNode("Cruzamento de medias"),
-                new TreeNode("Inside bar"),
-                new TreeNode("Breakout validado"),
+                new TreeNode("Simulacao") { Tag = "bottom:Simulacao" },
+                new TreeNode("Backtest") { Tag = "bottom:Backtest" },
+                new TreeNode("Resultado") { Tag = "bottom:Resultado" },
             },
         });
-        _navigator.Nodes.Add(new TreeNode("Camadas institucionais")
-        {
-            Nodes =
-            {
-                new TreeNode("Regime"),
-                new TreeNode("Estrutura"),
-                new TreeNode("Contexto"),
-                new TreeNode("Risco"),
-                new TreeNode("Portfolio"),
-                new TreeNode("Consenso"),
-            },
-        });
-        _navigator.Nodes.Add(new TreeNode("Backtests"));
-        _navigator.Nodes.Add(new TreeNode("Eventos"));
         _navigator.ExpandAll();
     }
 
@@ -625,6 +753,12 @@ public sealed class MainForm : Form
         if (tag.StartsWith("reading:", StringComparison.OrdinalIgnoreCase))
         {
             SelectReadingTabInWorkspace(tag["reading:".Length..]);
+            return;
+        }
+
+        if (tag.StartsWith("bottom:", StringComparison.OrdinalIgnoreCase))
+        {
+            SelectBottomTab(tag["bottom:".Length..]);
         }
     }
 
@@ -636,7 +770,7 @@ public sealed class MainForm : Form
         }
         if (_leftDockColumn is not null)
         {
-            _leftDockColumn.Width = visible ? 235 : 0;
+            _leftDockColumn.Width = visible ? 260 : 0;
         }
     }
 
@@ -1139,7 +1273,8 @@ public sealed class MainForm : Form
             process.ErrorDataReceived += (_, args) => AppendProcessLog(errPath, args.Data);
             process.Exited += (_, _) => BeginInvoke(() =>
             {
-                _robotButton.Text = "Ligar robo";
+                _robotButton.Text = "Iniciar Robo";
+                _robotButton.BackColor = TerminalTheme.PositiveSoft;
                 _robotStatus.Text = $"Robo: encerrado ({process.ExitCode})";
                 _statusLeft.Text = "Fusion robo encerrado.";
                 _fusionProcess?.Dispose();
@@ -1149,7 +1284,8 @@ public sealed class MainForm : Form
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
             _fusionProcess = process;
-            _robotButton.Text = "Parar robo";
+            _robotButton.Text = "Parar Robo";
+            _robotButton.BackColor = TerminalTheme.Negative;
             _robotStatus.Text = $"Robo: rodando PID {process.Id}";
             _statusLeft.Text = "Fusion robo iniciado pelo terminal.";
         }
@@ -1178,7 +1314,8 @@ public sealed class MainForm : Form
         {
             _fusionProcess?.Dispose();
             _fusionProcess = null;
-            _robotButton.Text = "Ligar robo";
+            _robotButton.Text = "Iniciar Robo";
+            _robotButton.BackColor = TerminalTheme.PositiveSoft;
             _robotStatus.Text = "Robo: parado";
             _statusLeft.Text = "Fusion robo parado pelo terminal.";
         }

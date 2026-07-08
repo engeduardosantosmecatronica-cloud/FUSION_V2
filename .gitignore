@@ -67,6 +67,7 @@ models_research/
 _archive/
 _external/
 rustup-init.exe
+/image.png
 
 # Sistema/IDE
 .DS_Store

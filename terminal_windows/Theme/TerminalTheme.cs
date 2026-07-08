@@ -4,13 +4,17 @@ namespace FusionTerminalWindows.Theme;
 
 public static class TerminalTheme
 {
-    public static readonly Color Background = Color.FromArgb(8, 13, 22);
-    public static readonly Color Panel = Color.FromArgb(13, 23, 37);
-    public static readonly Color PanelAlt = Color.FromArgb(17, 27, 42);
-    public static readonly Color Border = Color.FromArgb(42, 57, 78);
-    public static readonly Color Text = Color.FromArgb(226, 232, 240);
-    public static readonly Color Muted = Color.FromArgb(148, 163, 184);
-    public static readonly Color Primary = Color.FromArgb(56, 189, 248);
-    public static readonly Color Positive = Color.FromArgb(34, 197, 94);
-    public static readonly Color Negative = Color.FromArgb(239, 68, 68);
+    public static readonly Color Background = Color.FromArgb(7, 11, 18);
+    public static readonly Color Panel = Color.FromArgb(13, 21, 33);
+    public static readonly Color PanelAlt = Color.FromArgb(18, 29, 45);
+    public static readonly Color PanelSoft = Color.FromArgb(23, 37, 56);
+    public static readonly Color Border = Color.FromArgb(46, 62, 84);
+    public static readonly Color Text = Color.FromArgb(232, 238, 247);
+    public static readonly Color Muted = Color.FromArgb(151, 164, 184);
+    public static readonly Color Primary = Color.FromArgb(58, 170, 255);
+    public static readonly Color PrimarySoft = Color.FromArgb(28, 78, 116);
+    public static readonly Color Positive = Color.FromArgb(35, 196, 118);
+    public static readonly Color PositiveSoft = Color.FromArgb(22, 84, 58);
+    public static readonly Color Warning = Color.FromArgb(245, 158, 11);
+    public static readonly Color Negative = Color.FromArgb(239, 78, 88);
 }
