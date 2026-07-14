@@ -33,9 +33,9 @@ public sealed class MainForm : Form
     private readonly TextBox _symbolCombo = new() { Width = 118, Text = "AUDUSD" };
     private readonly TextBox _timeframeCombo = new() { Width = 62, Text = "M15" };
     private readonly NumericUpDown _rightMarginSpin = new() { Width = 54, Minimum = 0, Maximum = 120, Value = 18 };
-    private readonly Label _connection = new() { AutoSize = true, ForeColor = TerminalTheme.Muted, Padding = new Padding(8, 6, 0, 0) };
+    private readonly Label _connection = new() { Dock = DockStyle.Fill, ForeColor = TerminalTheme.Muted, Padding = new Padding(8, 2, 0, 0), AutoEllipsis = true };
     private readonly Button _robotButton;
-    private readonly Label _robotStatus = new() { AutoSize = true, ForeColor = TerminalTheme.Muted, Padding = new Padding(8, 6, 0, 0), Text = "Robo: parado" };
+    private readonly Label _robotStatus = new() { Dock = DockStyle.Fill, ForeColor = TerminalTheme.Muted, Padding = new Padding(8, 2, 0, 0), AutoEllipsis = true, Text = "Robo: parado" };
     private readonly string _repoRoot;
     private Process? _fusionProcess;
     private Process? _bridgeProcess;
@@ -66,11 +66,12 @@ public sealed class MainForm : Form
     public MainForm()
     {
         Text = "Fusion Control Center";
+        AutoScaleMode = AutoScaleMode.Dpi;
         Width = 1460;
         Height = 880;
         MinimumSize = new Size(1220, 760);
         StartPosition = FormStartPosition.CenterScreen;
-        WindowState = FormWindowState.Normal;
+        WindowState = FormWindowState.Maximized;
         BackColor = TerminalTheme.Background;
         ForeColor = TerminalTheme.Text;
         Font = new Font("Segoe UI", 9f);
@@ -122,7 +123,7 @@ public sealed class MainForm : Form
             ColumnCount = 1,
             BackColor = TerminalTheme.Background,
         };
-        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 72));
+        shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 124));
         shell.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
         shell.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         shell.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -179,13 +180,13 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Background,
-            Padding = new Padding(16, 10, 16, 8),
+            Padding = new Padding(16, 6, 16, 10),
             RowCount = 1,
             ColumnCount = 3,
         };
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 340));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300));
 
         var brand = new FlowLayoutPanel
         {
@@ -218,29 +219,26 @@ public sealed class MainForm : Form
             WrapContents = false,
             Padding = new Padding(8, 14, 8, 0),
         };
-        center.Controls.Add(HeaderButton("Home", 74, ShowChartInWorkspace));
-        center.Controls.Add(HeaderButton("Mercado", 86, ShowChartInWorkspace));
-        center.Controls.Add(HeaderButton("Analise", 82, () => SelectReadingTabInWorkspace("Probabilidades")));
-        center.Controls.Add(HeaderButton("Ordens", 78, () => SelectReadingTabInWorkspace("Ordens")));
-        center.Controls.Add(HeaderButton("Backtest", 86, () => SelectBottomTab("Backtest")));
+        center.Controls.Add(HeaderButton("Home", 82, ShowChartInWorkspace));
+        center.Controls.Add(HeaderButton("Mercado", 100, ShowChartInWorkspace));
+        center.Controls.Add(HeaderButton("Analise", 92, () => SelectReadingTabInWorkspace("Probabilidades")));
+        center.Controls.Add(HeaderButton("Ordens", 88, () => SelectReadingTabInWorkspace("Ordens")));
+        center.Controls.Add(HeaderButton("Backtest", 98, () => SelectBottomTab("Backtest")));
 
         var status = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Panel,
-            Padding = new Padding(12, 8, 12, 8),
+            Padding = new Padding(12, 4, 12, 4),
             RowCount = 2,
-            ColumnCount = 2,
+            ColumnCount = 1,
         };
-        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36));
-        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 64));
-        status.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
+        status.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        status.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
         status.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         status.Paint += (_, e) => DrawBorder(e.Graphics, status.ClientRectangle);
         status.Controls.Add(StatusCaption("STATUS DO ROBO"), 0, 0);
-        status.Controls.Add(StatusCaption("SINCRONISMO MT5"), 1, 0);
         status.Controls.Add(_robotStatus, 0, 1);
-        status.Controls.Add(_connection, 1, 1);
 
         header.Controls.Add(brand, 0, 0);
         header.Controls.Add(center, 1, 0);
@@ -334,12 +332,13 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Border,
-            ColumnCount = 3,
+            ColumnCount = 4,
             RowCount = 2,
         };
-        _leftDockColumn = new ColumnStyle(SizeType.Absolute, 320);
+        _leftDockColumn = new ColumnStyle(SizeType.Absolute, 300);
         _rightDockColumn = new ColumnStyle(SizeType.Absolute, 0);
-        _bottomDockRow = new RowStyle(SizeType.Absolute, 220);
+        _bottomDockRow = new RowStyle(SizeType.Absolute, 260);
+        main.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 58));
         main.ColumnStyles.Add(_leftDockColumn);
         main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         main.ColumnStyles.Add(_rightDockColumn);
@@ -350,14 +349,91 @@ public sealed class MainForm : Form
         _chartArea = BuildChartArea();
         _bottomDock = BuildBottomPanel();
 
-        main.Controls.Add(_leftDock, 0, 0);
+        var navigationRail = BuildNavigationRail();
+        main.Controls.Add(navigationRail, 0, 0);
+        main.SetRowSpan(navigationRail, 2);
+        main.Controls.Add(_leftDock, 1, 0);
+        main.SetRowSpan(_leftDock, 2);
         _centerHost.Controls.Add(_chartArea);
-        main.Controls.Add(_centerHost, 1, 0);
-        main.Controls.Add(_bottomDock, 0, 1);
-        main.SetColumnSpan(_bottomDock, 3);
+        main.Controls.Add(_centerHost, 2, 0);
+        main.Controls.Add(_bottomDock, 2, 1);
+        main.SetColumnSpan(_bottomDock, 2);
         return main;
     }
 
+
+    private Control BuildNavigationRail()
+    {
+        var rail = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(8, 15, 22),
+            Padding = new Padding(6, 10, 6, 10),
+        };
+        var buttons = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            BackColor = rail.BackColor,
+        };
+
+        buttons.Controls.Add(RailButton("⌂", "Home", ShowModuleCatalog, true));
+        buttons.Controls.Add(RailButton("▣", "Mercado", ShowChartInWorkspace));
+        buttons.Controls.Add(RailButton("⌁", "Grafico", ShowChartInWorkspace));
+        buttons.Controls.Add(RailButton("!", "Sinais", () => SelectReadingTabInWorkspace("Sinais")));
+        buttons.Controls.Add(RailButton("≡", "Ordens", () => SelectReadingTabInWorkspace("Ordens")));
+        buttons.Controls.Add(RailButton("◈", "Portfolio", () => ShowWorkspaceModule("Portfolio", "Exposicao, correlacao, risco agregado e desempenho da carteira.")));
+        buttons.Controls.Add(RailButton("↗", "Analise", () => SelectReadingTabInWorkspace("Probabilidades")));
+        buttons.Controls.Add(RailButton("♙", "Estrategias", () => ShowWorkspaceModule("Estrategias", "Catalogo, ranking, parametros e desempenho das estrategias.")));
+        buttons.Controls.Add(RailButton("B", "Backtest", () => SelectBottomTab("Backtest")));
+        buttons.Controls.Add(RailButton("▶", "Simulacao", () => SelectBottomTab("Simulacao")));
+        buttons.Controls.Add(RailButton("□", "Eventos", () => SelectReadingTabInWorkspace("Eventos")));
+        buttons.Controls.Add(RailButton("R", "Relatorios", () => ShowWorkspaceModule("Relatorios", "Resultados diarios, semanais, mensais e exportacoes.")));
+        buttons.Controls.Add(RailButton("L", "Logs", () => ShowWorkspaceModule("Logs e auditoria", "Decisoes, ordens, risco, mercado, modelos e integracoes.")));
+        buttons.Controls.Add(RailButton("♥", "Saude do sistema", () => ShowWorkspaceModule("Saude do sistema", "Conectividade, latencia, processos, dados e prontidao operacional.")));
+        buttons.Controls.Add(RailButton("⚙", "Configuracoes", () => ShowWorkspaceModule("Configuracoes", "Mercado, risco, operacao, interface, seguranca e perfis.")));
+        buttons.Controls.Add(RailButton("?", "Ajuda", () => ShowWorkspaceModule("Ajuda", "Documentacao e orientacoes do Fusion Control Center.")));
+        buttons.Controls.Add(RailButton("⇥", "Sair", Close));
+
+        rail.Controls.Add(buttons);
+        return rail;
+    }
+
+    private void ShowModuleCatalog()
+    {
+        _centerHost.Controls.Clear();
+        _centerHost.Controls.Add(new ModuleCatalogPanel());
+    }
+
+    private void ShowWorkspaceModule(string title, string description)
+    {
+        _centerHost.Controls.Clear();
+        _centerHost.Controls.Add(new ModulePlaceholder(title, description));
+    }
+
+    private static Button RailButton(string glyph, string hint, Action onClick, bool active = false)
+    {
+        var button = new Button
+        {
+            Text = glyph,
+            Width = 42,
+            Height = 36,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = active ? TerminalTheme.PrimarySoft : Color.FromArgb(8, 15, 22),
+            ForeColor = active ? TerminalTheme.Primary : TerminalTheme.Muted,
+            Font = new Font("Segoe UI Symbol", 12f, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 3),
+            Cursor = Cursors.Hand,
+            AccessibleName = hint,
+        };
+        button.FlatAppearance.BorderSize = 0;
+        button.FlatAppearance.MouseOverBackColor = TerminalTheme.PanelSoft;
+        button.Click += (_, _) => onClick();
+        new ToolTip().SetToolTip(button, hint);
+        return button;
+    }
     private Control BuildChartArea()
     {
         var dashboard = new TableLayoutPanel
@@ -408,7 +484,7 @@ public sealed class MainForm : Form
         {
             Dock = DockStyle.Fill,
             BackColor = TerminalTheme.Panel,
-            Padding = new Padding(12, 8, 12, 8),
+            Padding = new Padding(12, 4, 12, 4),
             Margin = new Padding(0, 0, 10, 10),
             RowCount = 3,
             ColumnCount = 1,
@@ -451,10 +527,10 @@ public sealed class MainForm : Form
             RowCount = 5,
             ColumnCount = 1,
         };
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 176));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 138));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 124));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 130));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 128));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
         panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
         panel.Controls.Add(BuildMarketOverviewCard(), 0, 0);
@@ -594,9 +670,9 @@ public sealed class MainForm : Form
         var panel = new TableLayoutPanel
         {
             Width = 260,
-            Height = 44,
+            Height = 40,
             BackColor = TerminalTheme.PanelSoft,
-            Margin = new Padding(0, 2, 0, 6),
+            Margin = new Padding(0, 2, 0, 3),
             ColumnCount = 2,
             RowCount = 2,
         };
@@ -1025,7 +1101,7 @@ public sealed class MainForm : Form
         }
         if (_bottomDockRow is not null)
         {
-            _bottomDockRow.Height = visible ? 220 : 0;
+            _bottomDockRow.Height = visible ? 260 : 0;
         }
     }
 

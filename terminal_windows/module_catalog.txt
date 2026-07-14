@@ -1,0 +1,378 @@
+﻿1. Visão geral
+Estado geral do sistema: operacional, degradado ou parado.
+Robô ativo/parado.
+Conta conectada.
+Corretora e servidor.
+Conta real ou demonstração.
+Saldo, patrimônio e margem livre.
+Lucro/prejuízo diário.
+Drawdown diário e total.
+Quantidade de posições e ordens pendentes.
+Última atualização dos dados.
+Alertas críticos recentes.
+2. Mercado em tempo real
+Ativo e timeframe selecionados.
+Candles em tempo real.
+Bid, Ask e último preço.
+Spread atual, médio e máximo.
+Volume e volatilidade.
+ATR e amplitude diária.
+Tendência principal.
+Regime de mercado.
+Sessão atual: Ásia, Londres ou Nova York.
+Máxima, mínima e abertura do dia.
+Suportes e resistências.
+Zonas de liquidez.
+Eventos econômicos próximos.
+Qualidade e atraso do feed.
+3. Gráfico operacional
+Candles e diferentes tipos de gráfico.
+Zoom e margem direita.
+Múltiplos timeframes.
+Médias móveis.
+VWAP, RSI, MACD, ATR e bandas.
+Suportes e resistências.
+Estrutura de mercado.
+Break of Structure e Change of Character.
+Order blocks e fair value gaps.
+Zonas de entrada, stop e alvo.
+Sinais BUY/SELL.
+Entradas e saídas executadas.
+Trailing stop no gráfico.
+Histórico visual das operações.
+Replay de mercado.
+4. Sinais e decisões
+Direção sugerida.
+Probabilidade de compra e venda.
+Confiança do sinal.
+Qualidade da oportunidade.
+Preço sugerido de entrada.
+Stop loss e take profit.
+Relação risco/retorno.
+Distância até zonas relevantes.
+Motivos favoráveis.
+Motivos contrários.
+Filtros aprovados e bloqueados.
+Estratégia responsável pelo sinal.
+Modelos que participaram da decisão.
+Divergências entre modelos.
+Explicação textual da decisão.
+Tempo de validade do sinal.
+5. Robô e automação
+Iniciar, pausar e parar o robô.
+Estado atual do ciclo operacional.
+Estratégias habilitadas.
+Ativos permitidos.
+Timeframes permitidos.
+Horários de operação.
+Limite de uma ou mais ordens por ativo.
+Modo automático, semiautomático ou somente leitura.
+Confirmação manual antes da entrada.
+Encerramento emergencial.
+Bloqueio após perdas consecutivas.
+Bloqueio por drawdown.
+Bloqueio durante notícias.
+Reconexão automática.
+Histórico de mudanças operacionais.
+6. Gestão de risco
+Risco por operação.
+Risco máximo diário.
+Limite de drawdown.
+Meta diária.
+Stop e alvo padrão.
+Unidade em pontos, pips, preço ou dinheiro.
+Lote fixo ou calculado pelo risco.
+Limite de exposição por ativo.
+Limite de exposição por moeda.
+Limite de posições correlacionadas.
+Risco agregado da carteira.
+Relação risco/retorno mínima.
+Spread máximo permitido.
+Slippage máximo.
+Proteção de saldo e patrimônio.
+Circuit breaker.
+Botão “Fechar tudo”.
+7. Ordens e posições
+Posições abertas.
+Ordens pendentes.
+Histórico de ordens.
+Ativo, lado, lote e preço.
+Stop loss e take profit.
+Lucro/prejuízo atual.
+Comissão, swap e custos.
+Tempo da posição.
+Estratégia e sinal de origem.
+Motivo da entrada.
+Modificações realizadas.
+Motivo da saída.
+Fechamento parcial.
+Break-even.
+Trailing stop.
+Rejeições e erros da corretora.
+8. Trailing stop e gerenciamento
+Ativação do trailing.
+Distância de ativação.
+Distância do preço.
+Passo de atualização.
+Break-even automático.
+Proteção de lucro.
+Saída parcial.
+Escalonamento de posição.
+Saída por tempo.
+Saída por reversão do sinal.
+Saída por mudança de regime.
+Histórico das movimentações do stop.
+9. Portfólio
+Exposição total.
+Exposição por ativo e moeda.
+Correlação entre posições.
+Concentração de risco.
+Posições compradas e vendidas.
+P&L por ativo.
+P&L por estratégia.
+P&L por sessão.
+P&L por timeframe.
+Mapa de calor da carteira.
+Diversificação.
+Risco projetado se todos os stops forem atingidos.
+10. Análise técnica
+Tendência por timeframe.
+Força da tendência.
+Momentum.
+Volatilidade.
+Estrutura de mercado.
+Suportes e resistências.
+Padrões de candle.
+Divergências.
+Compressão e expansão.
+Rompimentos.
+Retestes.
+Confluências.
+Pontuação técnica consolidada.
+11. Análise macroeconômica
+Calendário econômico.
+Eventos de alto impacto.
+Contagem regressiva para notícias.
+Países e moedas afetados.
+Expectativa, resultado anterior e atual.
+Surpresa econômica.
+Viés macro por moeda.
+Juros e expectativas monetárias.
+Inflação, emprego e atividade.
+Sentimento de risco global.
+Modo risk-on/risk-off.
+Bloqueio operacional durante eventos.
+12. Inteligência artificial e modelos
+Modelos carregados.
+Versão de cada modelo.
+Estado dos especialistas.
+Probabilidades individuais.
+Consenso do ensemble.
+Peso de cada modelo.
+Confiança calibrada.
+Features mais importantes.
+Explicação da previsão.
+Detecção de drift.
+Desempenho recente por modelo.
+Comparação produção versus shadow.
+Data do último treinamento.
+Ativos e timeframes cobertos.
+Alertas de modelo ausente ou incompatível.
+13. Estratégias
+Catálogo de estratégias.
+Estratégias ativas/inativas.
+Parâmetros de cada estratégia.
+Ativos compatíveis.
+Timeframes compatíveis.
+Regime de mercado adequado.
+Número de sinais.
+Taxa de acerto.
+Profit factor.
+Expectativa por operação.
+Drawdown.
+Resultado recente.
+Ranking de estratégias.
+Ativação automática baseada no regime.
+14. Backtest
+Seleção de período.
+Ativo e timeframe.
+Estratégia e parâmetros.
+Saldo inicial.
+Spread, comissão e slippage.
+Lote fixo ou risco percentual.
+Curva de patrimônio.
+Drawdown.
+Profit factor.
+Taxa de acerto.
+Payoff médio.
+Expectativa.
+Sharpe e Sortino.
+Máximo de perdas consecutivas.
+Distribuição de resultados.
+Lista de operações.
+Comparação entre configurações.
+Exportação do relatório.
+15. Walk-forward e validação
+Treino e teste por janelas.
+Resultados dentro e fora da amostra.
+Estabilidade dos parâmetros.
+Monte Carlo.
+Sensibilidade a spread e slippage.
+Comparação entre corretoras.
+Desempenho por regime.
+Desempenho por sessão.
+Detecção de overfitting.
+Aprovação ou rejeição para produção.
+16. Simulação e replay
+Reprodução candle a candle.
+Velocidade configurável.
+Pausar, continuar e reiniciar.
+Inserção manual de ordens.
+Stop, alvo e trailing simulados.
+Saldo virtual.
+Resultado por operação.
+Comparação entre decisão humana e robô.
+Simulação com custos reais.
+Registro completo da sessão.
+17. Eventos e alertas
+Sinais gerados.
+Ordens enviadas.
+Ordens executadas.
+Stops e alvos atingidos.
+Mudanças de trailing.
+Bloqueios de risco.
+Notícias próximas.
+Desconexão do MT5.
+Dados atrasados.
+Falha de modelo.
+Erros operacionais.
+Alertas sonoros e visuais.
+Níveis de severidade.
+Confirmação de leitura.
+18. Logs e auditoria
+Log operacional.
+Log de decisões.
+Log de ordens.
+Log de risco.
+Log de mercado.
+Log de modelos.
+Log de integração com MT5.
+Linha do tempo por operação.
+Estado antes e depois de cada decisão.
+Motivo de cada bloqueio.
+Parâmetros utilizados.
+Usuário responsável por mudanças.
+Exportação para CSV ou JSON.
+Filtros por data, ativo, estratégia e severidade.
+19. Qualidade e saúde do sistema
+MT5 conectado.
+API e bridge ativos.
+Latência do mercado.
+Idade do último candle.
+Ativos sem atualização.
+Filas de eventos.
+Consumo de CPU e memória.
+Espaço em disco.
+Processos ativos.
+Erros recentes.
+Modelos disponíveis.
+Integridade dos arquivos.
+Estado da corretora.
+Diagnóstico automático.
+Indicador geral de prontidão operacional.
+20. Configurações de mercado
+Lista de ativos monitorados.
+Símbolos equivalentes da corretora.
+Casas decimais.
+Tamanho do ponto e do pip.
+Valor do tick.
+Horários de negociação.
+Timeframes disponíveis.
+Número de candles carregados.
+Fonte histórica.
+Intervalo de atualização.
+Spread padrão para simulação.
+Fuso horário do broker.
+21. Configurações operacionais
+Conta padrão.
+Modo demo ou real.
+Ativos autorizados.
+Estratégias autorizadas.
+Horários permitidos.
+Limites de ordem.
+Confirmações manuais.
+Reconexão automática.
+Inicialização automática do bridge.
+Inicialização automática do robô.
+Salvamento do layout.
+Perfis de configuração.
+Importação e exportação de parâmetros.
+22. Personalização da interface
+Tema claro/escuro.
+Cores dos candles.
+Tamanho das fontes.
+Escala por DPI.
+Painéis redimensionáveis.
+Mostrar ou ocultar módulos.
+Salvar layout.
+Restaurar layout padrão.
+Atalhos de teclado.
+Favoritos na barra lateral.
+Múltiplos monitores.
+Modo compacto.
+Tela cheia.
+23. Relatórios
+Resultado diário, semanal e mensal.
+P&L por ativo.
+P&L por estratégia.
+P&L por sessão.
+Resultado bruto e líquido.
+Custos operacionais.
+Drawdown.
+Consistência.
+Melhores e piores operações.
+Motivos de entrada e saída.
+Qualidade dos sinais.
+Oportunidades bloqueadas.
+Comparação real versus backtest.
+Exportação em CSV, Excel ou PDF.
+24. Diário de trading
+Observações por operação.
+Captura do gráfico na entrada.
+Captura do gráfico na saída.
+Contexto de mercado.
+Emoção e disciplina, para operações manuais.
+Erros identificados.
+Lições aprendidas.
+Etiquetas personalizadas.
+Revisão diária.
+Plano para a próxima sessão.
+25. Segurança
+Confirmação para conta real.
+PIN ou senha para ações críticas.
+Perfis de usuário.
+Permissões por módulo.
+Bloqueio de alterações durante operações.
+Registro de ações administrativas.
+Backup de configurações.
+Recuperação de emergência.
+Proteção contra ordens duplicadas.
+Confirmação para “Fechar tudo”.
+Estrutura recomendada para a barra lateral
+Home
+Mercado
+Gráfico
+Sinais
+Ordens
+Portfólio
+Análise
+Estratégias
+Backtest
+Simulação
+Eventos
+Relatórios
+Logs
+Saúde do sistema
+Configurações
+Ajuda
+Sair

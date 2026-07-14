@@ -485,14 +485,14 @@ export default function Settings() {
         <div className="flex items-center gap-3 py-2">
           <Link to="/"><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><ArrowLeft className="w-4 h-4" /></Button></Link>
           <div>
-            <h1 className="text-lg font-bold">ConfiguraÃ§Ãµes</h1>
-            <p className="text-xs text-muted-foreground">ConexÃ£o MT5, dados e arquivos do bridge</p>
+            <h1 className="text-lg font-bold">Configurações</h1>
+            <p className="text-xs text-muted-foreground">Conexão MT5, dados e arquivos do bridge</p>
           </div>
         </div>
 
         <Tabs defaultValue="connection">
           <TabsList className="bg-[#161b22] border border-[#1c2333]">
-            <TabsTrigger value="connection" className="text-xs">ConexÃ£o MT5</TabsTrigger>
+            <TabsTrigger value="connection" className="text-xs">Conexão MT5</TabsTrigger>
             <TabsTrigger value="bridge" className="text-xs">Bridge Python</TabsTrigger>
             <TabsTrigger value="ea" className="text-xs">Expert Advisor MQL5</TabsTrigger>
             <TabsTrigger value="data" className="text-xs">Dados</TabsTrigger>
@@ -523,7 +523,7 @@ export default function Settings() {
                     <Input value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="12345678" className="h-8 text-xs font-mono bg-[#0d1117] border-[#1c2333]" /></div>
                   <div className="space-y-1"><Label className="text-xs text-muted-foreground">Saldo ($)</Label>
                     <Input type="number" value={balance} onChange={e => setBalance(e.target.value)} placeholder="10000" className="h-8 text-xs font-mono bg-[#0d1117] border-[#1c2333]" /></div>
-                  <div className="space-y-1"><Label className="text-xs text-muted-foreground">PatrimÃ´nio ($)</Label>
+                  <div className="space-y-1"><Label className="text-xs text-muted-foreground">Patrimônio ($)</Label>
                     <Input type="number" value={equity} onChange={e => setEquity(e.target.value)} placeholder="10000" className="h-8 text-xs font-mono bg-[#0d1117] border-[#1c2333]" /></div>
                   <div className="space-y-1"><Label className="text-xs text-muted-foreground">Margem ($)</Label>
                     <Input type="number" value={margin} onChange={e => setMargin(e.target.value)} placeholder="0" className="h-8 text-xs font-mono bg-[#0d1117] border-[#1c2333]" /></div>

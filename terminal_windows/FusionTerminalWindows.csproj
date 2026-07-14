@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -9,4 +9,7 @@
     <AssemblyName>FusionTerminalWindows</AssemblyName>
     <RootNamespace>FusionTerminalWindows</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="module_catalog.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

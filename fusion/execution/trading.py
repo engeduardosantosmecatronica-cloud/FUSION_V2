@@ -1,4 +1,4 @@
-﻿"""
+"""
 FUSION_V2 - Trading Executor
 ===========================
 Inspirado em OMNIS: execuÃ§Ã£o MT5, ordens, gerenciamento
@@ -331,6 +331,30 @@ class TradingExecutor:
             sl_points = int(symbol_cfg.get("sl_points", sl_points) or sl_points or 0)
         return int(tp_points or 0), int(sl_points or 0)
 
+    def _fresh_rates_guard(self, symbol: str, tf: int) -> Tuple[bool, str]:
+        # Ultima trava antes do order_send: nao opera com candle fechado desatualizado.
+        if mt5 is None:
+            return False, "FRESH_RATES_GUARD_MT5_INDISPONIVEL"
+        tf_name, tf_attr = self.TF_CODES.get(int(tf), ("M5", "TIMEFRAME_M5"))
+        tf_code = getattr(mt5, tf_attr, None)
+        if tf_code is None:
+            return False, f"FRESH_RATES_GUARD_TIMEFRAME_INVALIDO:{tf}"
+        rates = mt5.copy_rates_from_pos(symbol, tf_code, 1, 2)
+        if rates is None or len(rates) == 0:
+            return False, f"FRESH_RATES_GUARD_SEM_CANDLE:{symbol}:{tf_name}"
+        last_time = int(rates[-1]["time"])
+        last_dt = datetime.utcfromtimestamp(last_time)
+        age_minutes = (datetime.utcnow() - last_dt).total_seconds() / 60.0
+        tf_minutes = int(tf or 5)
+        max_age_minutes = max(float(tf_minutes) * 3.0, 30.0)
+        if tf_minutes >= 1440:
+            max_age_minutes = float(tf_minutes) * 3.0
+        if age_minutes > max_age_minutes:
+            reason = f"FRESH_RATES_GUARD_CANDLE_ANTIGO:{symbol}:{tf_name}:{age_minutes:.0f}m>{max_age_minutes:.0f}m"
+            self.logger.warning(reason)
+            return False, reason
+        return True, "OK"
+
     def execute_buy(self, symbol: str, tf: int, mode: str = "NORMAL") -> TradeResult:
         """Executa compra â€” mÃ¡ximo 1 compra por ativo."""
         ok, reason = self._floating_loss_guard()
@@ -341,7 +365,9 @@ class TradingExecutor:
             return TradeResult(False, 0, "COMPRA_JA_EXISTE")
         volume = self.order_manager.calculate_lot(symbol, self.config.risk.max_risk_per_trade)
         magic = self.MAGIC_BASE.get(tf, 202605)
-        ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_BUY)
+        ok, reason = self._fresh_rates_guard(symbol, tf)
+        if ok:
+            ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_BUY)
         if ok:
             ok, reason = self._extreme_order_guard(symbol, tf, mt5.ORDER_TYPE_BUY)
         if not ok:
@@ -358,7 +384,9 @@ class TradingExecutor:
             return TradeResult(False, 0, "VENDA_JA_EXISTE")
         volume = self.order_manager.calculate_lot(symbol, self.config.risk.max_risk_per_trade)
         magic = self.MAGIC_BASE.get(tf, 202605)
-        ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_SELL)
+        ok, reason = self._fresh_rates_guard(symbol, tf)
+        if ok:
+            ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_SELL)
         if ok:
             ok, reason = self._extreme_order_guard(symbol, tf, mt5.ORDER_TYPE_SELL)
         if not ok:
@@ -387,7 +415,9 @@ class TradingExecutor:
         tp_points, sl_points = self._runtime_tp_sl(symbol, tp_points, sl_points)
         volume = self.order_manager.calculate_lot(symbol, self.config.risk.max_risk_per_trade)
         sl, tp = self.price_levels_from_points(symbol, mt5.ORDER_TYPE_BUY, tp_points, sl_points)
-        ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_BUY)
+        ok, reason = self._fresh_rates_guard(symbol, tf)
+        if ok:
+            ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_BUY)
         if ok:
             ok, reason = self._extreme_order_guard(symbol, tf, mt5.ORDER_TYPE_BUY, p_buy=p_buy, p_sell=p_sell)
         if not ok:
@@ -416,7 +446,9 @@ class TradingExecutor:
         tp_points, sl_points = self._runtime_tp_sl(symbol, tp_points, sl_points)
         volume = self.order_manager.calculate_lot(symbol, self.config.risk.max_risk_per_trade)
         sl, tp = self.price_levels_from_points(symbol, mt5.ORDER_TYPE_SELL, tp_points, sl_points)
-        ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_SELL)
+        ok, reason = self._fresh_rates_guard(symbol, tf)
+        if ok:
+            ok, reason = self._ema_order_guard(symbol, tf, mt5.ORDER_TYPE_SELL)
         if ok:
             ok, reason = self._extreme_order_guard(symbol, tf, mt5.ORDER_TYPE_SELL, p_buy=p_buy, p_sell=p_sell)
         if not ok:

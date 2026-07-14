@@ -9,10 +9,10 @@ public sealed class SimulationPanel : UserControl
 {
     private const int ComboWidth = 158;
     private const int NumericWidth = 76;
-    private const int RowWidth = 260;
+    private const int RowWidth = 280;
     private const int RowHeight = 30;
-    private const int LabelWidth = 82;
-    private const int SliderLabelWidth = 82;
+    private const int LabelWidth = 94;
+    private const int SliderLabelWidth = 94;
     private const int CheckWidth = 82;
     private const int BlockTitleWidth = 230;
     private readonly ComboBox _strategyCombo = Combo();

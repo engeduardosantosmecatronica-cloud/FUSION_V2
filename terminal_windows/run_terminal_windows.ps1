@@ -1,5 +1,6 @@
 param(
     [switch]$NoMt5Bridge,
+    [switch]$StartMt5Bridge,
     [double]$BridgeIntervalSeconds = 1.0,
     [int]$BridgeBars = 200,
     [string]$BridgeSymbols = "",
@@ -33,7 +34,7 @@ if (-not (Test-Path $Python)) {
 $BridgeScript = Join-Path $Root "tools\export_mt5_candles_for_terminal.py"
 $BridgeProcess = $null
 
-if (-not $NoMt5Bridge) {
+if ($StartMt5Bridge -and -not $NoMt5Bridge) {
     if ((Test-Path $Python) -and (Test-Path $BridgeScript)) {
         $BridgeArgs = @(
             $BridgeScript,

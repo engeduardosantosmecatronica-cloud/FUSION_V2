@@ -19,7 +19,7 @@ Instale o .NET SDK 10 ou superior e rode:
 .\terminal_windows\run_terminal_windows.ps1
 ```
 
-Por padrao, o launcher tambem inicia a ponte Python com o MT5 em segundo plano:
+O Terminal Windows inicia a ponte Python com o MT5 em segundo plano. O launcher PowerShell nao inicia outra ponte por padrao, para evitar duplicidade:
 
 ```powershell
 tools\export_mt5_candles_for_terminal.py --interval 1
@@ -30,16 +30,10 @@ Essa ponte atualiza `runtime/market_data/latest_candles/*.json`, e o terminal mi
 - historico local em `data/csv/{timeframe}/...`;
 - candles live vindos do MT5.
 
-Para abrir somente com CSV historico, sem ponte MT5:
+Para forcar o launcher PowerShell a iniciar a ponte separadamente durante testes:
 
 ```powershell
-.\terminal_windows\run_terminal_windows.ps1 -NoMt5Bridge
-```
-
-Para limitar a ponte a poucos ativos durante testes:
-
-```powershell
-.\terminal_windows\run_terminal_windows.ps1 -BridgeSymbols "AUDUSD,EURUSD,GOLD" -BridgeTimeframes "M5,M15"
+.\terminal_windows\run_terminal_windows.ps1 -StartMt5Bridge -BridgeSymbols "AUDUSD,EURUSD,GOLD" -BridgeTimeframes "M5,M15"
 ```
 
 ## Proximas etapas
@@ -86,3 +80,4 @@ Fonte padrao:
 ```text
 reports/shadow_engine_report/shadow_engine_events_*.csv
 ```
+

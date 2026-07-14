@@ -94,7 +94,7 @@ from fusion.decision import (
     SignalCandidate,
     build_xai_explanation,
 )
-from fusion.strategies import Estrategia1, Estrategia2, Estrategia3, Estrategia4, Estrategia5, Estrategia6
+from fusion.strategies import Estrategia1, Estrategia2, Estrategia3, Estrategia4, Estrategia5, Estrategia6, Estrategia7, Estrategia8, Estrategia9, Estrategia10, Estrategia11, Estrategia12, Estrategia13, Estrategia14
 from fusion.strategies.base import StrategyContext
 
 
@@ -276,6 +276,14 @@ class FusionV2:
             Estrategia3(self),
             Estrategia4(self),
             Estrategia6(self),
+            Estrategia7(self),
+            Estrategia8(self),
+            Estrategia9(self),
+            Estrategia10(self),
+            Estrategia11(self),
+            Estrategia12(self),
+            Estrategia13(self),
+            Estrategia14(self),
         ]
         self._register_core_engines()
         self.logger.info(f"[BOOT][TIMING] construcao completa do FusionV2 em {time.perf_counter() - boot_started:.3f}s")
@@ -292,6 +300,19 @@ class FusionV2:
             min_tradeability_score=float(cfg.get("min_tradeability_score", 0.55) or 0.55),
             max_conflict_score=float(cfg.get("max_conflict_score", 0.40) or 0.40),
             reduce_size_conflict_score=float(cfg.get("reduce_size_conflict_score", 0.25) or 0.25),
+            min_direction_score=float(cfg.get("min_direction_score", 0.60) or 0.60),
+            macro_alignment_guard_enabled=bool(cfg.get("macro_alignment_guard_enabled", True)),
+            macro_alignment_min_tradeability=float(cfg.get("macro_alignment_min_tradeability", 0.60) or 0.60),
+            macro_alignment_min_consensus=float(cfg.get("macro_alignment_min_consensus", 0.45) or 0.45),
+            losing_positions_guard_enabled=bool(cfg.get("losing_positions_guard_enabled", True)),
+            losing_positions_min_tradeability=float(cfg.get("losing_positions_min_tradeability", 0.68) or 0.68),
+            extreme_breakout_guard_enabled=bool(cfg.get("extreme_breakout_guard_enabled", True)),
+            extreme_breakout_min_tradeability=float(cfg.get("extreme_breakout_min_tradeability", 0.68) or 0.68),
+            extreme_breakout_min_consensus=float(cfg.get("extreme_breakout_min_consensus", 0.55) or 0.55),
+            stale_data_guard_enabled=bool(cfg.get("stale_data_guard_enabled", True)),
+            fragile_structure_guard_enabled=bool(cfg.get("fragile_structure_guard_enabled", True)),
+            fragile_structure_min_tradeability=float(cfg.get("fragile_structure_min_tradeability", 0.70) or 0.70),
+            fragile_structure_min_consensus=float(cfg.get("fragile_structure_min_consensus", 0.50) or 0.50),
         )
         audit_logger = DecisionAuditLogger(
             log_dir=cfg.get("audit_log_dir", "logs/decision_audit"),
@@ -1282,6 +1303,14 @@ class FusionV2:
             "strategy4": 40,
             "strategy5": 50,
             "strategy6": 60,
+            "strategy7": 70,
+            "strategy8": 80,
+            "strategy9": 90,
+            "strategy10": 91,
+            "strategy11": 92,
+            "strategy12": 93,
+            "strategy13": 94,
+            "strategy14": 95,
         }.get(strategy_name, 90)
         magic_base = int(cfg.get("magic_base", default_magic_prefix))
         magic_prefix = magic_base if magic_base < 100 else magic_base // 100
@@ -1296,13 +1325,13 @@ class FusionV2:
 
     def _system_magic_group(self) -> list:
         magics = set()
-        for strategy_name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6"]:
+        for strategy_name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6", "strategy7", "strategy8", "strategy9", "strategy10", "strategy11", "strategy12", "strategy13", "strategy14"]:
             magics.update(self._strategy_magic_group(strategy_name))
         return sorted(magics)
 
     def _log_strategy_magic_map(self):
         strategies_active = []
-        for strategy_name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6"]:
+        for strategy_name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6", "strategy7", "strategy8", "strategy9", "strategy10", "strategy11", "strategy12", "strategy13", "strategy14"]:
             if not self._strategy_enabled(strategy_name):
                 continue
             magics = ", ".join(f"{tf}={self._strategy_magic(strategy_name, tf)}" for tf in self.TIMEFRAMES)
@@ -3071,66 +3100,6 @@ class FusionV2:
                 return False
         return False
 
-    def _close_positions_on_opposite_final_signal(self) -> None:
-        cfg = self.config.get("trading.close_on_opposite_signal", {}) or {}
-        if not bool(cfg.get("enabled", False)):
-            return
-        if mt5 is None:
-            self.logger.warning("[OPPOSITE_SIGNAL_CLOSE] MT5 indisponivel")
-            return
-        if not self.final_signal_state:
-            return
-
-        min_loss_money = abs(float(cfg.get("min_loss_money", 1.0) or 1.0))
-        scope = str(cfg.get("scope", "fusion_magics") or "fusion_magics")
-        reason_code = str(cfg.get("reason_code", "opposite_final_signal_loss_guard") or "opposite_final_signal_loss_guard")
-        fusion_magics = {int(item) for item in self._system_magic_group()}
-        symbol_map = {str(broker).upper(): str(symbol).upper() for broker, symbol in self.sync_dict.items()}
-        symbol_map.update({str(symbol).upper(): str(symbol).upper() for symbol in self.sync_dict.values()})
-
-        positions = self.trading.order_manager.get_all_positions()
-        closed_any = False
-        for position in positions:
-            if not self._position_in_close_scope(position, scope, fusion_magics):
-                continue
-
-            broker_symbol = str(getattr(position, "symbol", "") or "").upper()
-            symbol = symbol_map.get(broker_symbol, broker_symbol)
-            final = self.final_signal_state.get(symbol, {}) or {}
-            final_signal = int(final.get("alert_signal", final.get("signal", 0)) or 0)
-            if final_signal not in (1, 2):
-                continue
-
-            position_side = self._position_side(position)
-            final_side = "BUY" if final_signal == 1 else "SELL"
-            if position_side == "" or position_side == final_side:
-                continue
-
-            profit = float(getattr(position, "profit", 0.0) or 0.0)
-            if profit >= -min_loss_money:
-                self.logger.info(
-                    f"[OPPOSITE_SIGNAL_CLOSE] Mantendo {broker_symbol} ticket={getattr(position, 'ticket', '')}: "
-                    f"{position_side} contra FINAL {final_side}, mas prejuizo {profit:.2f} >= -{min_loss_money:.2f}"
-                )
-                continue
-
-            ticket = int(getattr(position, "ticket", 0) or 0)
-            result = self.trading.order_manager.close_position(ticket)
-            if result and result.success:
-                closed_any = True
-                self.logger.warning(
-                    f"[OPPOSITE_SIGNAL_CLOSE] Fechou {broker_symbol} ticket={ticket}: "
-                    f"{position_side} contra FINAL {final_side} | profit={profit:.2f} | motivo={reason_code}"
-                )
-            else:
-                self.logger.error(
-                    f"[OPPOSITE_SIGNAL_CLOSE] Falha ao fechar {broker_symbol} ticket={ticket}: "
-                    f"{getattr(result, 'message', 'sem_resultado')}"
-                )
-
-        if closed_any:
-            self._refresh_oms_state()
-
     def _manual_order_approval_cfg(self) -> dict:
         cfg = self.config.get("trading.manual_approval", {}) or {}
         runtime_cfg = self._runtime_section("manual_approval")
@@ -3595,7 +3564,7 @@ class FusionV2:
         current_strategy_magics = set(self._strategy_magic_group(strategy_name))
         system_magics = set()
         if scope == "system":
-            for name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6"]:
+            for name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6", "strategy7", "strategy8", "strategy9", "strategy10", "strategy11", "strategy12", "strategy13", "strategy14"]:
                 system_magics.update(self._strategy_magic_group(name))
 
         positions = mt5.positions_get()
@@ -5427,6 +5396,14 @@ class FusionV2:
             "strategy4": "S4",
             "strategy5": "S5",
             "strategy6": "S6",
+            "strategy7": "S7",
+            "strategy8": "S8",
+            "strategy9": "S9",
+            "strategy10": "S10",
+            "strategy11": "S11",
+            "strategy12": "S12",
+            "strategy13": "S13",
+            "strategy14": "S14",
         }.get(strategy_name, strategy_name.upper())
         mode = f"FUSION_{tag}_{tf}"
         magic_group = None
@@ -5593,7 +5570,7 @@ class FusionV2:
 
         if strategy_name == "strategy1" and bool(cfg.get("use_tp_sl", False)):
             tp_points = int(cfg.get("tp_points", 0))
-        elif strategy_name in ["strategy2", "strategy3", "strategy5"]:
+        elif strategy_name in ["strategy2", "strategy3", "strategy5", "strategy7", "strategy8", "strategy9", "strategy10", "strategy11", "strategy12", "strategy13", "strategy14"]:
             if bool(cfg.get("use_feature_tp_sl", True)) and feature_row:
                 tp_points = int(float(feature_row.get("target", cfg.get("default_tp_points", 500))))
                 if bool(cfg.get("use_feature_sl", False)):
@@ -5773,7 +5750,7 @@ class FusionV2:
         try:
             approved_model = self.approved_models.get((sym_ia.upper(), tf.upper()))
             model = self.models.get(key)
-            if not model and not approved_model and not self._strategy_enabled("strategy6"):
+            if not model and not approved_model and not (self._strategy_enabled("strategy6") or self._strategy_enabled("strategy7") or self._strategy_enabled("strategy8") or self._strategy_enabled("strategy9") or self._strategy_enabled("strategy10") or self._strategy_enabled("strategy11") or self._strategy_enabled("strategy12") or self._strategy_enabled("strategy13") or self._strategy_enabled("strategy14")):
                 self.monitor_state[key] = {
                     "signal": -1, "p_buy": 0, "p_sell": 0,
                     "status": "SEM_MODELO", "reason": "sem_modelo"
@@ -6092,7 +6069,6 @@ class FusionV2:
                 self._annotate_currency_strength_directional_signals()
                 self._annotate_currency_strength_neutrals()
                 self._build_final_signal_state()
-                self._close_positions_on_opposite_final_signal()
                 self._print_dashboard_premium()
                 self._write_currency_strength_map()
                 self.mt5_signal_panel.export(
