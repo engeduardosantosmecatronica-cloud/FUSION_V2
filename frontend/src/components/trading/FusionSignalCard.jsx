@@ -144,10 +144,31 @@ export default function FusionSignalCard({ symbol, timeframe, compact }) {
       )}
 
       {/* Reason */}
-      <div className="text-xs text-muted-foreground border-t border-border/50 pt-1.5 flex items-start gap-1">
-        <AlertTriangle size={10} className="shrink-0 mt-0.5 text-yellow-400/60" />
-        <span className="leading-relaxed">{data.reason}</span>
-      </div>
+          <div className="text-xs text-muted-foreground border-t border-border/50 pt-1.5">
+            <div className="flex items-start gap-1">
+              <AlertTriangle size={10} className="shrink-0 mt-0.5 text-yellow-400/60" />
+              <span className="leading-relaxed">{data.reason}</span>
+            </div>
+
+            {/* Historical decision gate (if present) */}
+            { (data.historical_decision || data.historical_decision_gate) && (
+              <div className="mt-2 flex items-center gap-2">
+                <div className="text-[11px] text-muted-foreground">Histórico</div>
+                {(() => {
+                  const hd = data.historical_decision || data.historical_decision_gate || {};
+                  const dec = (hd.decision || hd.direction || 'hold').toLowerCase();
+                  const conf = Math.round((hd.confidence || hd.confidence === 0) ? Number(hd.confidence) : (hd.confidence_pct || 0));
+                  const cls = dec === 'buy' ? 'text-green-400' : dec === 'sell' ? 'text-red-400' : 'text-muted-foreground';
+                  return (
+                    <div className={cn('flex items-center gap-2 font-mono text-sm', cls)}>
+                      <span className="font-bold">{dec.toUpperCase()}</span>
+                      <div className="text-[11px] text-muted-foreground">{conf}%</div>
+                    </div>
+                  );
+                })() }
+              </div>
+            )}
+          </div>
     </div>
   );
 }

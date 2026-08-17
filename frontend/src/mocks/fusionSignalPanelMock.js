@@ -15,7 +15,7 @@ export function mockFusionSignalPanel(symbol = 'EURUSD', timeframe = 'M15') {
 
   const basePrices = {
     EURUSD: 1.09625, GBPUSD: 1.27450, USDJPY: 157.32,
-    XAUUSD: 2341.50, GBPJPY: 200.15, AUDCAD: 0.9120,
+    gold: 2341.50, GBPJPY: 200.15, AUDCAD: 0.9120,
     USDCAD: 1.3620, AUDNZD: 1.0850, EURGBP: 0.8520,
   };
   const base = basePrices[symbol] || 1.09625;
@@ -58,6 +58,13 @@ export function mockFusionSignalPanel(symbol = 'EURUSD', timeframe = 'M15') {
       passed: Math.floor(rnd(4, 12, 0)),
       blocked_by: status === 'blocked' ? ['volatility_engine', 'market_alignment'][Math.floor(Math.random() * 2)] : null,
       shadow_by: status === 'shadow' ? 'macro_flow' : null,
+    },
+    // historical decision gate mock (observability only)
+    historical_decision: {
+      decision: Math.random() > 0.7 ? 'hold' : (Math.random() > 0.5 ? 'buy' : 'sell'),
+      confidence: Math.floor(rnd(30, 95, 0)),
+      reasons: ['profile_zone_ok', 'recency_aligned'].slice(0, Math.floor(Math.random() * 3) + 1),
+      details: { acceptance_status: Math.random() > 0.5 ? 'accepted' : 'needs_validation' },
     },
   };
 }
