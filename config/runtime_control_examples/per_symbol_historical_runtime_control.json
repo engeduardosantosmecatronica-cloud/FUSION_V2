@@ -1,0 +1,38 @@
+{
+  "overrides": {
+    "EURUSD": {
+      "decision_engine": { "historical_enabled": true },
+      "entry_filters": {
+        "historical_decision": {
+          "mode": "shadow",
+          "lookback_bars": 120,
+          "min_domain_quality": 0.5,
+          "log_each_check": true
+        }
+      }
+    },
+    "XAUUSD": {
+      "decision_engine": { "historical_enabled": true },
+      "entry_filters": {
+        "historical_decision": {
+          "mode": "shadow",
+          "lookback_bars": 200,
+          "min_domain_quality": 0.6,
+          "log_each_check": true
+        }
+      }
+    },
+    "AUDCAD": {
+      "decision_engine": { "historical_enabled": true },
+      "entry_filters": {
+        "historical_decision": {
+          "mode": "shadow",
+          "lookback_bars": 80,
+          "min_domain_quality": 0.45,
+          "log_each_check": true
+        }
+      }
+    }
+  },
+  "notes": "Apply per-symbol overrides by merging into config/fusion_runtime_control.json or load at runtime via the runtime_control loader. Start with 'shadow' for 7 days, then switch to 'block' for chosen symbols when validated."
+}
