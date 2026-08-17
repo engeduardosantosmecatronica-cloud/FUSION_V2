@@ -30,12 +30,12 @@ trading:  # controles gerais de abertura e limite de ordens
     timeout_seconds: 45
   floating_loss_guard:
     enabled: true
-    max_loss_money: 25.0
+    max_loss_money: 50.0
     scope: "all_open_positions"
   daily_loss_guard:
     enabled: true
     max_loss_pct: 2.0
-    max_loss_money: 25.0
+    max_loss_money: 50.0
     include_commission_swap: true
   reentry_cooldown_after_close:  # secao de configuracao: reentry_cooldown_after_close
     enabled: true  # liga/desliga esta camada ou recurso
@@ -196,16 +196,57 @@ signal_overrides:  # correcoes pontuais/temporarias sem retreinar modelo
 
 # Entry Filters
 entry_filters:  # camadas de filtros antes da ordem
+  swap_filter:
+    enabled: false
+    mode: "disabled"
+    prefer_positive: false
+    block_negative: false
+    negative_block_threshold: 0.0
+    min_swap_to_prefer: 0.0
+    min_swap_to_allow: 0.0
+    reason_code: "swap_filter_disabled"
+    log_each_check: false
+  historical_price_acceptance:  # valida se o preco atual permanece coerente com o dominio historico recente
+    enabled: true
+    mode: "shadow"  # shadow registra apenas; evita bloqueio duro salvo em strict_mode=block
+    strict_mode: "soft"  # soft aceita needs_validation; block bloqueia quando o dominio historico falha
+    reason_code: "historical_price_acceptance"
+    lookback_bars: 80
+    min_domain_quality: 0.10
+    tolerance_pct: 0.05
+    log_each_check: false
+  historical_decision:  # integracao do gate de decisao historica (perfil + recencia + MTF)
+    enabled: true
+    mode: "shadow"  # shadow registra apenas por padrao; mude para block para bloquear ordens
+    strict_mode: "soft"
+    reason_code: "historical_decision"
+    lookback_bars: 80
+    min_domain_quality: 0.10
+    log_each_check: false
+  daytrade_relaxation:  # relaxa filtros macro/contexto para sinais muito fortes em M5/M15/M30
+    enabled: true
+    timeframes: ["M5", "M15", "M30"]
+    strong_signal_edge: 0.10
+    relax_filters: ["market_alignment", "macro_flow", "context_brain", "timeframe_consensus", "market_structure", "volatility_engine", "execution_engine", "entry_timing", "opportunity_engine", "portfolio_correlation"]
+  trend_direction_guard:  # bloqueia apenas entradas que contrariam a tendência dominante, sem endurecer demais o resto
+    enabled: true
+    mode: "block"
+    bars: 120
+    ema_fast: 21
+    ema_slow: 50
+    timeframes: ["M15", "H1", "H4"]
+    log_each_check: false
+    reason_code: "trend_direction_guard"
   market_alignment:  # sincroniza sinal do modelo com fluxo multi-timeframe real sem inverter automaticamente
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # shadow registra; block impede ordem contra fluxo/chop
+    mode: "shadow"  # shadow registra; block impede ordem contra fluxo/chop para daytrade
     reason_code: "market_alignment"  # codigo usado no motivo de bloqueio
     log_each_check: true  # registra cada avaliacao no log do robo
     write_monitor_log: true  # grava CSV em reports/market_alignment
-    block_states: ["countertrend", "structural_conflict", "chop", "weak_alignment"]  # estados que bloqueiam em mode=block
-    min_alignment_score: 0.18  # score minimo ponderado para aceitar direcao
-    min_structural_score: 0.10  # score minimo H4/D1 na direcao do sinal
-    chop_abs_score: 0.14  # abaixo disso considera sem fluxo claro
+    block_states: ["countertrend", "structural_conflict"]  # estados que bloqueiam em mode=block
+    min_alignment_score: 0.10  # score minimo ponderado para aceitar direcao
+    min_structural_score: 0.06  # score minimo H4/D1 na direcao do sinal
+    chop_abs_score: 0.08  # abaixo disso considera sem fluxo claro
     require_h1_or_h4_alignment: true  # exige H1 ou H4 alinhado com o sinal
     block_lower_tf_against_h4_d1: true  # M5/M15/M30 contra H4/D1 vira pullback/bloqueio
     timeframe_weights:  # pesos da leitura de mercado por timeframe
@@ -220,11 +261,11 @@ entry_filters:  # camadas de filtros antes da ordem
     mode: "shadow"  # shadow registra; block impede ordem contra consenso ponderado
     reason_code: "timeframe_consensus"  # codigo usado no motivo de bloqueio
     log_each_check: true  # registra divergencias no log do robo
-    block_states: ["counter_consensus", "structural_conflict", "weak_consensus"]  # estados que bloqueiam em mode=block
+    block_states: ["counter_consensus", "structural_conflict"]  # estados que bloqueiam em mode=block
     wait_edge: 0.08  # abaixo desta diferenca p_buy-p_sell considera WAIT
-    min_valid_timeframes: 3  # minimo de timeframes com probabilidade valida para bloquear
-    min_consensus_score: 0.18  # consenso minimo ponderado na direcao do sinal
-    min_structural_score: 0.10  # consenso minimo H4/D1 na direcao do sinal
+    min_valid_timeframes: 2  # minimo de timeframes com probabilidade valida para bloquear
+    min_consensus_score: 0.10  # consenso minimo ponderado na direcao do sinal
+    min_structural_score: 0.06  # consenso minimo H4/D1 na direcao do sinal
     require_h1_or_h4_alignment: true  # exige H1 ou H4 alinhado com o sinal
     block_lower_tf_against_h4_d1: true  # M5/M15/M30 contra H4/D1 vira conflito/pullback
     timeframe_weights:  # pesos por timeframe no consenso de previsoes
@@ -236,7 +277,7 @@ entry_filters:  # camadas de filtros antes da ordem
       D1: 3.00  # peso/valor usado no calculo desta camada
   session_context:  # filtro de sessao, liquidez e horario
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     low_liquidity_start_hour_utc: 21  # inicio UTC da janela de baixa liquidez
     low_liquidity_end_hour_utc: 23  # fim UTC da janela de baixa liquidez
     asian_start_hour_utc: 0  # inicio UTC da sessao asiatica
@@ -281,7 +322,7 @@ entry_filters:  # camadas de filtros antes da ordem
     log_each_check: false  # true registra cada checagem; aumenta volume de logs
   volatility_engine:  # motor de volatilidade e anomalias
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     block_states: ["PANIC_VOLATILITY"]  # estados que bloqueiam ordem quando mode=block
     bars: 180  # quantidade de candles usados no calculo
     atr_period: 14  # periodo do ATR
@@ -302,7 +343,7 @@ entry_filters:  # camadas de filtros antes da ordem
     ema_slow: 50  # periodo da EMA lenta
     atr_period: 14  # periodo do ATR
     momentum_bars: 20  # janela de momentum em candles
-    min_score: 0.30  # score minimo exigido
+    min_score: 0.20  # score minimo exigido
     weights:  # pesos usados no calculo composto
       H1: 1.0  # peso/valor usado no calculo desta camada
       H4: 1.5  # peso/valor usado no calculo desta camada
@@ -353,7 +394,7 @@ entry_filters:  # camadas de filtros antes da ordem
   portfolio_exposure:  # controle de exposicao global e por moeda
     enabled: true  # liga/desliga esta camada ou recurso
     mode: "allow"  # modo de operacao do filtro: shadow registra, block bloqueia
-    block_states: ["symbol_concentration", "currency_overexposure", "gross_overexposure", "cluster_overexposure", "losing_currency_overexposure"]  # estados que bloqueiam ordem quando mode=block
+    block_states: ["symbol_concentration", "currency_overexposure", "gross_overexposure", "cluster_overexposure", ""]  # estados que bloqueiam ordem quando mode=block
     position_scope: "all"  # escopo das posicoes consideradas
     max_currency_exposure: 2.0  # exposicao maxima por moeda
     max_projected_currency_exposure: 2.5  # exposicao maxima projetada apos nova ordem
@@ -384,7 +425,7 @@ entry_filters:  # camadas de filtros antes da ordem
     reason_code: "ai_advisor"  # codigo de motivo usado em logs/dashboard
   context_engine:  # motor de contexto consolidado
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     min_context_score: 0.50  # contexto minimo aceito
     max_context_conflict: 0.35  # conflito maximo aceito no contexto
     log_each_check: false  # true registra cada checagem; aumenta volume de logs
@@ -434,16 +475,16 @@ entry_filters:  # camadas de filtros antes da ordem
       model_probability: 0.10  # peso da confianca bruta do modelo
   market_briefing:  # regras manuais/externas do briefing de mercado
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     briefing_path: "config/market_briefing_today.json"  # arquivo do briefing/manual do dia
-    min_risk_to_block: "EXTREMO"  # risco minimo do briefing para bloquear
+    min_risk_to_block: "MEDIO"  # risco minimo do briefing para bloquear
     min_bias_strength: 0.35  # forca minima do vies macro para apoiar/contrariar BUY/SELL
-    apply_expired_as_shadow: true  # briefing expirado vira shadow em vez de block
+    apply_expired_as_shadow: false  # briefing expirado vira block em vez de shadow
     log_each_check: true  # true registra cada checagem; aumenta volume de logs
     reason_code: "market_briefing"  # codigo de motivo usado em logs/dashboard
   entry_timing:  # avaliacao de qualidade do timing de entrada
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     block_extreme_entries: true  # bloqueia compra em topo/venda em fundo salvo rompimento validado
     bars: 260  # quantidade de candles usados no calculo
     top_bottom_distance_atr: 0.30  # distancia de topo/fundo em ATR
@@ -456,7 +497,7 @@ entry_filters:  # camadas de filtros antes da ordem
     reason_code: "entry_timing"  # codigo de motivo usado em logs/dashboard
   meta_model_ensemble:  # avaliacao de qualidade do ensemble
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     min_active_members: 2  # minimo de membros ativos no ensemble
     max_conflict_ratio: 0.35  # conflito maximo entre membros
     max_vote_concentration: 0.70  # concentracao maxima de votos
@@ -466,16 +507,24 @@ entry_filters:  # camadas de filtros antes da ordem
     reason_code: "meta_model_ensemble"  # codigo de motivo usado em logs/dashboard
   feature_engineering:  # validacao de qualidade/cobertura das features
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     bars: 260  # quantidade de candles usados no calculo
     min_feature_coverage: 0.65  # cobertura minima de features
     min_family_coverage: 0.60  # cobertura minima por familia de features
     max_nan_critical: 3  # quantidade maxima de NaN em features criticas
     log_each_check: false  # true registra cada checagem; aumenta volume de logs
     reason_code: "feature_engineering"  # codigo de motivo usado em logs/dashboard
+  factor_engine:  # motores de fatores e sinalizacao tecnica
+    enabled: false  # liga/desliga esta camada ou recurso
+    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    bars: 120  # quantidade de candles usados para alimentar os fatores
+    enabled_factors: []  # lista opcional de fatores ativados; vazio = todos
+    min_confidence: 0.15  # confianca minima para tratar fator como relevante
+    log_each_check: false  # true registra cada checagem; aumenta volume de logs
+    reason_code: "factor_engine"  # codigo de motivo usado em logs/dashboard
   confidence_calibration:  # calibracao das probabilidades historicas
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     candidates_path: "reports/market_structure_calibration/market_structure_calibration_candidates_atr1.5_slatr1_lh100.csv"  # arquivo de candidatos historicos para calibracao
     profiles_path: "reports/confidence_calibration/confidence_calibration_profiles.json"  # perfis de calibracao salvos
     use_profiles: true  # usa perfis calibrados quando disponiveis
@@ -489,7 +538,7 @@ entry_filters:  # camadas de filtros antes da ordem
     reason_code: "confidence_calibration"  # codigo de motivo usado em logs/dashboard
   consensus_engine:  # consenso entre motores institucionais
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     min_consensus_score: 0.50  # consenso minimo para oportunidade boa
     max_conflict_score: 0.35  # conflito maximo permitido
     weak_score_floor: 0.40  # piso para score fraco
@@ -515,7 +564,7 @@ entry_filters:  # camadas de filtros antes da ordem
       confidence_calibration: 0.10  # peso/valor usado no calculo desta camada
   opportunity_engine:  # pontuacao final de oportunidade operacional
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     block_states: ["poor", "conflicted"]  # estados que bloqueiam ordem quando mode=block
     min_tradeability_score: 0.50  # tradeability minima para operar
     marginal_tradeability_score: 0.42  # limiar de oportunidade marginal
@@ -570,7 +619,7 @@ entry_filters:  # camadas de filtros antes da ordem
     reason_code: "risk_engine"  # codigo de motivo usado em logs/dashboard
   execution_engine:  # motor de execucao e qualidade da entrada
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     bars: 180  # quantidade de candles usados no calculo
     min_entry_quality_score: 0.50  # qualidade minima da entrada
     min_breakout_quality_score: 0.55  # qualidade minima do rompimento
@@ -581,7 +630,7 @@ entry_filters:  # camadas de filtros antes da ordem
     reason_code: "execution_engine"  # codigo de motivo usado em logs/dashboard
   market_structure:  # motor de estrutura de mercado
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     timeframes: ["current", "M5", "M15"]  # timeframes usados nesta regra
     bars: 260  # quantidade de candles usados no calculo
     # Mantem o diagnostico completo no JSONL, mas evita poluir o log operacional.
@@ -604,7 +653,7 @@ entry_filters:  # camadas de filtros antes da ordem
       weak_institutional_structure: 0.15  # penalidade por estrutura fraca
   candle_price_confirmation:  # confirmacao por preco e candle
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     bars: 3  # quantidade de candles usados no calculo
     use_bid_ask: true  # usa bid/ask para confirmar preco
     log_passed_filter: false  # registra tambem filtros aprovados
@@ -612,7 +661,7 @@ entry_filters:  # camadas de filtros antes da ordem
     sell_rule: "preco atual abaixo da abertura do candle atual; candle anterior deve ser de baixa"  # regra textual para vendas
   ema_alignment:  # confirmacao por alinhamento de medias
     enabled: true  # liga/desliga esta camada ou recurso
-    mode: "shadow"  # modo de operacao do filtro: shadow registra, block bloqueia
+    mode: "block"  # modo de operacao do filtro: shadow registra, block bloqueia
     periods: [9, 21, 50]  # periodos usados pelo indicador
     bars: 80  # quantidade de candles usados no calculo
     use_closed_candle: true  # usa candle fechado para evitar repaint
@@ -667,6 +716,7 @@ decision_engine:  # camada final de decisao institucional
   fragile_structure_min_consensus: 0.50  # consenso minimo com estrutura shadow fraca
   xai_enabled: true  # habilita explicabilidade da decisao
   xai_top_factors: 8  # quantidade de fatores XAI exibidos
+  historical_enabled: false  # habilita o uso do gate historico de decisao (false por padrao)
 
 # Offline AI reviewer for Decision Audit.
 # Nao altera configuracao automaticamente; apenas gera logs e relatorios de revisao.
@@ -890,7 +940,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["EURUSD", "GOLD", "XAUUSD", "BTCUSD"]
+    symbols: ["EURUSD", "GOLD", "gold", "BTCUSD"]
     timeframes: ["M15", "M30", "H1", "H4"]
     bars: 260
     use_closed_candle: true
@@ -922,7 +972,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["EURUSD", "GBPUSD", "BTCUSD", "GOLD", "XAUUSD"]
+    symbols: ["EURUSD", "GBPUSD", "BTCUSD", "GOLD", "gold"]
     timeframes: ["M15", "M30", "H1", "H4"]
     bars: 260
     use_closed_candle: true
@@ -952,7 +1002,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["EURUSD", "GBPUSD", "USDJPY", "GOLD", "XAUUSD"]
+    symbols: ["EURUSD", "GBPUSD", "USDJPY", "GOLD", "gold"]
     timeframes: ["M15", "M30", "H1"]
     bars: 320
     use_closed_candle: true
@@ -983,7 +1033,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "XAUUSD"]
+    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "gold"]
     timeframes: ["M15", "M30", "H1", "H4"]
     bars: 320
     use_closed_candle: true
@@ -1006,7 +1056,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["BTCUSD", "ETHUSD", "GOLD", "XAUUSD", "EURUSD", "GBPUSD"]
+    symbols: ["BTCUSD", "ETHUSD", "GOLD", "gold", "EURUSD", "GBPUSD"]
     timeframes: ["M15", "M30", "H1", "H4"]
     bars: 320
     use_closed_candle: true
@@ -1032,7 +1082,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "XAUUSD"]
+    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "gold"]
     timeframes: ["M30", "H1", "H4"]
     bars: 320
     use_closed_candle: true
@@ -1056,7 +1106,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "XAUUSD"]
+    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "gold"]
     timeframes: ["M15", "M30", "H1", "H4"]
     bars: 320
     use_closed_candle: true
@@ -1079,7 +1129,7 @@ strategies:  # configuracao das estrategias operacionais
     max_positions_per_side: 1
     max_positions_mode: "any_direction"
     max_positions_scope: "strategy"
-    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "XAUUSD"]
+    symbols: ["EURUSD", "GBPUSD", "USDJPY", "BTCUSD", "GOLD", "gold"]
     timeframes: ["M5", "M15", "M30", "H1", "H4"]
     bars: 360
     use_closed_candle: true
@@ -1126,7 +1176,7 @@ data:  # configuracoes de dados e simbolos
 
 # Model Settings
 model:  # arquivos e features do modelo global
-  model_dir: "./models_research"  # diretorio dos modelos principais
+  model_dir: "./models"  # diretorio dos modelos principais
   global_model: "genesis_global_model.pkl"  # arquivo do modelo global
   scaler: "genesis_scaler.pkl"  # arquivo do scaler do modelo
   meta: "genesis_model_meta.pkl"  # metadados do modelo
@@ -1194,21 +1244,26 @@ mt5_decision_layers:
 
 # Target Symbols
 symbols:  # lista de ativos monitorados pelo robo
-  # Todos os ativos com modelo em models_research e candles locais disponiveis.
+  # Nova whitelist operacional definida pelo cliente: manter somente ativos ativos e modelos aprovados.
   - AUDCAD
   - AUDCHF
   - AUDJPY
+  - AUDNOK
   - AUDNZD
+  - AUDSEK
   - AUDSGD
   - AUDUSD
+  - AUS200CASH
+  - BNBUSD
   - BTCUSD
   - CADCHF
   - CADJPY
   - CHFDKK
   - CHFJPY
+  - CHFNOK
+  - CHFPLN
   - CHFSGD
-  - DOTUSD
-  - ETHUSD
+  - EU50CASH
   - EURAUD
   - EURCAD
   - EURCHF
@@ -1216,25 +1271,46 @@ symbols:  # lista de ativos monitorados pelo robo
   - EURHKD
   - EURHUF
   - EURJPY
-  - EURMXN
   - EURNOK
   - EURNZD
-  - EURPLN
   - EURSEK
   - EURUSD
+  - FRA40CASH
   - GBPAUD
   - GBPCAD
   - GBPCHF
   - GBPJPY
   - GBPNZD
+  - GBPSGD
   - GBPUSD
+  - GER40CASH
   - GOLD
+  - HK50CASH
+  - JP225CASH
+  - NETH25CASH
   - NZDCAD
   - NZDCHF
   - NZDJPY
   - NZDSGD
   - NZDUSD
+  - SILVER
+  - SPAIN35CASH
+  - SWI20CASH
+  - UK100CASH
+  - UNIUSD
+  - US100CASH
+  - US30CASH
+  - US500CASH
   - USDCAD
   - USDCHF
+  - USDDKK
+  - USDHUF
   - USDJPY
+  - USDMXN
+  - USDNOK
+  - USDPLN
+  - USDSEK
+  - USDZAR
+  - XAUEUR
+  - XMRUSD
 
