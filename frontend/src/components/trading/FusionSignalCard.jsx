@@ -39,6 +39,7 @@ function PriceCard({ label, value, color }) {
 }
 
 export default function FusionSignalCard({ symbol, timeframe, compact }) {
+  const [expanded, setExpanded] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -143,32 +144,52 @@ export default function FusionSignalCard({ symbol, timeframe, compact }) {
         </div>
       )}
 
-      {/* Reason */}
-          <div className="text-xs text-muted-foreground border-t border-border/50 pt-1.5">
-            <div className="flex items-start gap-1">
-              <AlertTriangle size={10} className="shrink-0 mt-0.5 text-yellow-400/60" />
-              <span className="leading-relaxed">{data.reason}</span>
-            </div>
+      {/* Reason and historical decision */}
+      <div className="text-xs text-muted-foreground border-t border-border/50 pt-1.5">
+        <div className="flex items-start gap-1">
+          <AlertTriangle size={10} className="shrink-0 mt-0.5 text-yellow-400/60" />
+          <span className="leading-relaxed">{data.reason}</span>
+        </div>
 
-            {/* Historical decision gate (if present) */}
-            { (data.historical_decision || data.historical_decision_gate) && (
-              <div className="mt-2 flex items-center gap-2">
-                <div className="text-[11px] text-muted-foreground">Histórico</div>
-                {(() => {
-                  const hd = data.historical_decision || data.historical_decision_gate || {};
-                  const dec = (hd.decision || hd.direction || 'hold').toLowerCase();
-                  const conf = Math.round((hd.confidence || hd.confidence === 0) ? Number(hd.confidence) : (hd.confidence_pct || 0));
-                  const cls = dec === 'buy' ? 'text-green-400' : dec === 'sell' ? 'text-red-400' : 'text-muted-foreground';
-                  return (
-                    <div className={cn('flex items-center gap-2 font-mono text-sm', cls)}>
-                      <span className="font-bold">{dec.toUpperCase()}</span>
-                      <div className="text-[11px] text-muted-foreground">{conf}%</div>
-                    </div>
-                  );
-                })() }
-              </div>
-            )}
+        { (data.historical_decision || data.historical_decision_gate) && (
+          <div className="mt-2">
+            {(() => {
+              const hd = data.historical_decision || data.historical_decision_gate || {};
+              const dec = (hd.decision || hd.direction || 'hold').toLowerCase();
+              const conf = Math.round((hd.confidence || hd.confidence === 0) ? Number(hd.confidence) : (hd.confidence_pct || 0));
+              const cls = dec === 'buy' ? 'text-green-400' : dec === 'sell' ? 'text-red-400' : 'text-muted-foreground';
+              return (
+                <div className="flex items-center justify-between">
+                  <div className={cn('flex items-center gap-2 font-mono text-sm', cls)}>
+                    <span className="font-bold">{dec.toUpperCase()}</span>
+                    <div className="text-[11px] text-muted-foreground">{conf}%</div>
+                    {hd.positive_factors && hd.positive_factors.length > 0 && (
+                      <div className="text-[11px] text-muted-foreground ml-2">+{hd.positive_factors.slice(0,3).join(', ')}</div>
+                    )}
+                  </div>
+                  <button onClick={() => setExpanded(!expanded)} className="text-[11px] text-muted-foreground underline">
+                    {expanded ? 'Ocultar detalhes' : 'Ver detalhes'}
+                  </button>
+                </div>
+              );
+            })()}
+
+            {expanded && (() => {
+              const hd = data.historical_decision || data.historical_decision_gate || {};
+              const features = hd.features || {};
+              return (
+                <div className="mt-2 text-[12px] text-muted-foreground">
+                  <div><strong>Acceptance:</strong> {features.acceptance_status || '—'}</div>
+                  <div><strong>Zone:</strong> {(features.zone && features.zone.type) || ((features.zone && features.zone.type) ? features.zone.type : (features.zone && features.zone.type) ? features.zone.type : (features.zone && features.zone.zone_type) || '—')}</div>
+                  <div><strong>Recency:</strong> {features.recency || '—'}</div>
+                  <div className="mt-1"><strong>Confidence breakdown:</strong></div>
+                  <div className="text-xs font-mono">{JSON.stringify(hd.details || features || {}, null, 2)}</div>
+                </div>
+              );
+            })()}
           </div>
+        )}
+      </div>
     </div>
   );
 }
