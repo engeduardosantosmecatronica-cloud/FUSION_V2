@@ -54,7 +54,7 @@ class RiskEngine:
     @staticmethod
     def _split_symbol(symbol: str) -> tuple[str, str]:
         symbol = str(symbol or "").upper().replace("/", "")
-        if symbol in {"GOLD", "XAUUSD"}:
+        if symbol in {"GOLD", "gold"}:
             return "XAU", "USD"
         if len(symbol) >= 6:
             return symbol[:3], symbol[3:6]
@@ -176,13 +176,16 @@ class RiskEngine:
             multiplier = min(multiplier, 0.75)
             warnings.append(f"posicoes_elevadas:{open_positions}")
 
+        # Treat negative (losing) positions as a warning rather than a hard negative factor.
+        # This avoids direct blocking caused by existing losing positions while still
+        # reflecting increased risk in warnings and modest score adjustments.
         if losing_positions >= cfg.max_losing_positions:
-            risk_score -= 0.20
-            multiplier = min(multiplier, 0.50)
-            negative.append(f"muitas_posicoes_negativas:{losing_positions}")
-        elif losing_positions >= max(1, int(cfg.max_losing_positions * 0.70)):
-            risk_score -= 0.10
+            risk_score -= 0.05
             multiplier = min(multiplier, 0.75)
+            warnings.append(f"muitas_posicoes_negativas:{losing_positions}")
+        elif losing_positions >= max(1, int(cfg.max_losing_positions * 0.70)):
+            risk_score -= 0.03
+            multiplier = min(multiplier, 0.85)
             warnings.append(f"posicoes_negativas_elevadas:{losing_positions}")
 
         if same_symbol_positions >= cfg.max_symbol_positions:
