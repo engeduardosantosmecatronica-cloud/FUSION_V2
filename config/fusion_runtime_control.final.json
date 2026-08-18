@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "name": "fusion_runtime_control.final",
+    "description": "Deploy-ready runtime control for historical decision gate. Conservative defaults: global disabled, per-symbol shadow monitoring",
+    "author": "automation",
+    "created_at": "2026-08-17"
+  },
+  "global": {
+    "decision_engine": {
+      "historical_enabled": false,
+      "historical_settings": {
+        "min_domain_quality": 0.45,
+        "tolerance_pct": 0.02,
+        "min_lookback_bars": 80
+      }
+    },
+    "entry_filters": {
+      "historical_decision": {
+        "mode": "shadow",
+        "log_each_check": true,
+        "log_level": "info"
+      }
+    }
+  },
+  "per_symbol": {
+    "EURUSD": {
+      "decision_engine": { "historical_enabled": false },
+      "entry_filters": { "historical_decision": { "mode": "shadow", "log_each_check": true } },
+      "schedule": { "start": "2026-08-17", "review_after_days": 7 }
+    },
+    "XAUUSD": {
+      "decision_engine": { "historical_enabled": false },
+      "entry_filters": { "historical_decision": { "mode": "shadow", "log_each_check": true } },
+      "notes": "Preserve XAUUSD (gold) in canonical list; monitor closely",
+      "schedule": { "start": "2026-08-17", "review_after_days": 7 }
+    },
+    "AUDCAD": {
+      "decision_engine": { "historical_enabled": false },
+      "entry_filters": { "historical_decision": { "mode": "shadow", "log_each_check": true } },
+      "schedule": { "start": "2026-08-17", "review_after_days": 7 }
+    }
+  },
+  "indexes_shadow_only": true,
+  "notes": "Indices and any symbol with min_lot > 0.01 remain in monitoring-only (shadow). After observation window and calibration adjustments, staged enablement may be applied.",
+  "operational_instructions": {
+    "observe_period_days": 7,
+    "reporting": {
+      "metrics": ["accepted","needs_validation","rejected"],
+      "report_path": "reports/calibration_acceptance.csv"
+    },
+    "rollback": "Set per_symbol.*.entry_filters.historical_decision.mode back to 'shadow' and set decision_engine.historical_enabled=false"
+  }
+}
