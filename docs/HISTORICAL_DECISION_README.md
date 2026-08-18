@@ -37,3 +37,26 @@ Observações:
 - O `event_bus` também publica `DASHBOARD_UPDATE` para registro do `engine_registry`.
 
 Se precisar, eu posso abrir um PR separado para atualizar componentes do frontend (ex.: `FusionSignalCard` / `SignalPanel`) para exibir `historical_decision_gate`. Deseja que eu faça isso agora? 
+
+## Recent Changes (feat/historical-ui-and-tools)
+
+- `fusion/engines/risk.py`: losing positions are now reported as `warnings` (e.g. `muitas_posicoes_negativas`) instead of `negative_factors` to avoid blocking new openings.
+- `fusion/main.py`: logging of short `factors=` fields no longer includes `warnings` (prioritizes `negative_factors` → `positive_factors`), reducing false-positive block indicators in logs.
+- Frontend: `FusionSignalCard` already supports `historical_decision` / `historical_decision_gate` display; details are shown in the signal card (confidence, positive factors, features).
+
+These changes are pushed to branch `feat/historical-ui-and-tools` and attached to the open PR for review.
+
+## Proposed Rollout
+
+1. Keep `entry_filters.historical_decision.mode: shadow` for 7 days, monitor `historical_decision_gate` outputs and logs for false positives.
+2. Run representative comparative backtests for major symbols (EURUSD, XAUUSD, AUDCAD) and compare decision distributions vs baseline.
+3. If shadow results are acceptable, enable `mode: block` per-symbol (use `runtime_control` overrides) for a small controlled subset (e.g., EURUSD only) for 7 days.
+4. After successful per-symbol trial, incrementally enable for additional symbols.
+
+## How I can help next
+
+- I can run the comparative backtests and collect summary CSVs and charts.
+- I can run the backend in shadow for a short live run and collect runtime logs for inspection.
+- I can open or update the PR with a clear changelog and rollout checklist.
+
+Tell me which of the above to run next and I'll execute it.
