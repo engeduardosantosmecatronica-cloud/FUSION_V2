@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "description": "Per-symbol runtime control for historical decision gate - conservative (shadow) defaults",
+    "created_by": "automation",
+    "created_at": "2026-08-17"
+  },
+  "global": {
+    "decision_engine": {
+      "historical_enabled": false
+    },
+    "entry_filters": {
+      "historical_decision": {
+        "mode": "shadow",
+        "log_each_check": true
+      }
+    }
+  },
+  "per_symbol": {
+    "EURUSD": {
+      "entry_filters": {
+        "historical_decision": { "mode": "shadow", "log_each_check": true }
+      },
+      "schedule": { "start": "2026-08-17", "end": "2026-08-24" }
+    },
+    "XAUUSD": {
+      "entry_filters": {
+        "historical_decision": { "mode": "shadow", "log_each_check": true }
+      },
+      "notes": "Preserve XAUUSD (gold) in canonical list",
+      "schedule": { "start": "2026-08-17", "end": "2026-08-24" }
+    },
+    "AUDCAD": {
+      "entry_filters": {
+        "historical_decision": { "mode": "shadow", "log_each_check": true }
+      },
+      "schedule": { "start": "2026-08-17", "end": "2026-08-24" }
+    }
+  },
+  "notes": "Indices and symbols with min_lot > 0.01 should remain in monitoring-only shadow mode at runtime. After observation window, consider staged enabling to 'block' for enforcement."
+}
