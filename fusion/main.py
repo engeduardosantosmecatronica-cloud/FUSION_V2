@@ -12,6 +12,7 @@ import csv
 import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any
 try:
     import MetaTrader5 as mt5
 except ImportError:
@@ -26,11 +27,14 @@ from fusion.core.contracts import apply_contract_override, contract_from_mt5_inf
 from fusion.core.enums import FusionEventType, OrderStatus
 from fusion.core.engine_registry import FusionEngineRegistry
 from fusion.core.event_logger import FusionEventLogger
+from fusion.core.event_service import FusionEventService
 from fusion.core.events import FusionEvent, FusionEventBus
 from fusion.core.logger import get_logger, FusionLogger
 from fusion.core.objects import FusionAccount, FusionOrder, FusionPosition, FusionSignal, FusionTick, FusionTrade
 from fusion.data.pipeline import MT5Connector
 from fusion.features.engine import FeatureEngine, AlphaMiner, RSI, EMA
+from fusion.features.feature_calculator import FeatureCalculator
+from fusion.features.ema_alignment import EMAAlignment
 from fusion.features.market_structure import MarketStructureConfig, build_market_structure_features
 from fusion.features.macro_flow import (
     MacroFlowConfig,
@@ -56,6 +60,7 @@ from fusion.engines import (
     EntryTimingEngine,
     ExecutionConfig,
     ExecutionEngine,
+    FactorEngine,
     FeatureEngineeringConfig,
     FeatureEngineeringEngine,
     MarketBriefingConfig,
@@ -75,17 +80,21 @@ from fusion.engines import (
     VolatilityConfig,
     VolatilityEngine,
 )
+from fusion.execution.controls import ExecutionControlService
 from fusion.execution.trading import TradingExecutor
 from fusion.execution.trailing import TrailingManager
 from fusion.execution.oms import FusionOMS
 from fusion.execution.oms_snapshot import OMSSnapshotWriter
+from fusion.filters.swap_filter import evaluate_swap_filter
 from fusion.approved_ensembles import ApprovedEnsembleRegistry
 from fusion.runtime_control import RuntimeControl
-from fusion.mt5_signal_panel import MT5SignalPanelExporter, mt5_common_files_dir
-from fusion.mt5_trade_zones import MT5TradeZonesExporter
+from fusion.runtime_bootstrap import FusionRuntimeBootstrap
 from fusion.mt5_decision_layers import MT5DecisionLayersExporter
+from fusion.mt5_signal_panel import mt5_common_files_dir
 from fusion.decision import (
     DecisionAuditLogger,
+    DecisionAuditService,
+    DecisionEvaluationService,
     DecisionEvent,
     DecisionOrchestrator,
     DecisionPolicy,
@@ -94,58 +103,34 @@ from fusion.decision import (
     SignalCandidate,
     build_xai_explanation,
 )
-from fusion.strategies import Estrategia1, Estrategia2, Estrategia3, Estrategia4, Estrategia5, Estrategia6, Estrategia7, Estrategia8, Estrategia9, Estrategia10, Estrategia11, Estrategia12, Estrategia13, Estrategia14
+from fusion.oms_service import FusionOMSService
+from fusion.signal_loop import FusionSignalLoopService
+from fusion.startup_service import FusionStartupService
+from fusion.strategy.strategy_service import FusionStrategyService
+from fusion.strategies import Estrategia1, Estrategia2, Estrategia3, Estrategia4, Estrategia5, Estrategia6, Estrategia7, Estrategia8, Estrategia9, Estrategia10, Estrategia11, Estrategia12, Estrategia13, Estrategia14, StrategyFeatures
 from fusion.strategies.base import StrategyContext
 
 
-class SingleModel:
-    """Modelo individual para um sÃ­mbolo/timeframe."""
-    def __init__(self, model_path, scaler_path, meta_path, calibrator_path=None):
-        import joblib
-        from fusion.core.config import get_config
-        config = get_config()
-        
-        self.model = joblib.load(model_path)
-        self.scaler = joblib.load(scaler_path)
-        if str(meta_path).lower().endswith(".json"):
-            self.meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
-        else:
-            self.meta = joblib.load(meta_path)
-        self.calibrator = joblib.load(calibrator_path) if calibrator_path and Path(calibrator_path).exists() else None
-        self.logger: FusionLogger = get_logger(f"SingleModel_{self.meta.get('symbol', '?')}_{self.meta.get('timeframe', '?')}")
-        self.feature_cols = self.meta.get('feature_columns', [])
-        self.buy_thresh = self.meta.get('buy_threshold', getattr(config.signal, 'buy_threshold', 0.55))
-        self.sell_thresh = self.meta.get('sell_threshold', getattr(config.signal, 'sell_threshold', 0.55))
-
-    @staticmethod
-    def _align_proba(probs, classes):
-        aligned = np.zeros((len(probs), 3), dtype=float)
-        class_list = [int(cls) for cls in classes]
-        for target_idx, label in enumerate([0, 1, 2]):
-            if label in class_list:
-                aligned[:, target_idx] = probs[:, class_list.index(label)]
-        row_sum = aligned.sum(axis=1, keepdims=True)
-        return aligned / np.where(row_sum == 0, 1.0, row_sum)
-    
-    def predict(self, features_df):
-        missing = [col for col in self.feature_cols if col not in features_df.columns]
-        if missing:
-            raise ValueError(f"Features ausentes para {self.meta.get('symbol', '?')}/{self.meta.get('timeframe', '?')}: {missing[:8]}")
-        X = features_df[self.feature_cols]
-        X_scaled = self.scaler.transform(X)
-        X_df = pd.DataFrame(X_scaled, columns=self.feature_cols)
-        probs = self.model.predict_proba(X_df)
-        probs = self._align_proba(probs, getattr(self.model, "classes_", self.meta.get("classes", [0, 1, 2])))
-        if self.calibrator is not None:
-            probs = self.calibrator.predict_proba(probs)
-            probs = self._align_proba(probs, getattr(self.calibrator, "classes_", [0, 1, 2]))
-        
-        p_buy = float(probs[0, 1])
-        p_sell = float(probs[0, 2])
-        
-        if p_buy > self.buy_thresh: return 1, p_buy, p_sell
-        if p_sell > self.sell_thresh: return 2, p_buy, p_sell
-        return 0, p_buy, p_sell
+from fusion.models.single_model import SingleModel
+from fusion.models.model_loader import ModelLoader
+from fusion.filters.signal_filters import SignalFilters
+from fusion.core.symbol_manager import SymbolManager
+from fusion.backtest.market_data import HistoricalMarketDataProvider
+from fusion.historical.acceptance_engine import HistoricalPriceAcceptanceEngine
+from fusion.historical import (
+    PriceProfileEngine,
+    ZoneDetector,
+    HistoricalDecisionEngine,
+    HistoricalRecencyEngine,
+    HistoricalMTFContextEngine,
+)
+from fusion.utils import (
+    normalized_signal_symbol,
+    opposite_prediction,
+    truthy_config_value,
+    merge_policy_dicts,
+    refresh_market_briefing,
+)
 
 
 class FusionV2:
@@ -165,40 +150,14 @@ class FusionV2:
         self.trading = TradingExecutor()
         self.trailing = TrailingManager()
         self.logger.info(f"[BOOT][TIMING] base runtime/trading/trailing prontos em {time.perf_counter() - boot_started:.3f}s")
-        self.models: dict = {}
-        self.sync_dict: dict = {}
+        self.models: dict = None
+        self.sync_dict: dict = None
         self.monitor_state: dict = {}
         self.actionable_signal_state: dict = {}
         self.final_signal_state: dict = {}
         self.decision_layers_state: dict = {}
-        panel_cfg = self.config.get("mt5_signal_panel", {}) or {}
-        self.mt5_signal_panel = MT5SignalPanelExporter(
-            output_dir=panel_cfg.get("output_dir") or None,
-            use_common_files=bool(panel_cfg.get("use_common_files", True)),
-            file_prefix=str(panel_cfg.get("file_prefix", "fusion_signal_panel_") or "fusion_signal_panel_"),
-            enabled=bool(panel_cfg.get("enabled", True)),
-        )
-        zones_cfg = self.config.get("mt5_trade_zones", {}) or {}
-        self.mt5_trade_zones = MT5TradeZonesExporter(
-            output_dir=zones_cfg.get("output_dir") or None,
-            use_common_files=bool(zones_cfg.get("use_common_files", True)),
-            file_prefix=str(zones_cfg.get("file_prefix", "fusion_trade_zones_") or "fusion_trade_zones_"),
-            enabled=bool(zones_cfg.get("enabled", True)),
-            bars=int(zones_cfg.get("bars", 120) or 120),
-            sr_lookback=int(zones_cfg.get("sr_lookback", 40) or 40),
-            atr_period=int(zones_cfg.get("atr_period", 14) or 14),
-            entry_atr_width=float(zones_cfg.get("entry_atr_width", 0.15) or 0.15),
-            sr_atr_width=float(zones_cfg.get("sr_atr_width", 0.08) or 0.08),
-            sl_atr_multiplier=float(zones_cfg.get("sl_atr_multiplier", 1.2) or 1.2),
-            tp_r_multiple=float(zones_cfg.get("tp_r_multiple", 2.0) or 2.0),
-        )
-        layers_cfg = self.config.get("mt5_decision_layers", {}) or {}
-        self.mt5_decision_layers = MT5DecisionLayersExporter(
-            output_dir=layers_cfg.get("output_dir") or None,
-            use_common_files=bool(layers_cfg.get("use_common_files", True)),
-            file_prefix=str(layers_cfg.get("file_prefix", "fusion_decision_layers_") or "fusion_decision_layers_"),
-            enabled=bool(layers_cfg.get("enabled", True)),
-        )
+        self.runtime_bootstrap = FusionRuntimeBootstrap(config=self.config, logger=self.logger)
+        self.mt5_signal_panel, self.mt5_trade_zones, self.mt5_decision_layers = self.runtime_bootstrap.build_mt5_exporters()
         self.logger.info(f"[BOOT][TIMING] exportadores MT5 prontos em {time.perf_counter() - boot_started:.3f}s")
         self._last_execution_block_reason = ""
         self._last_market_structure_reason = ""
@@ -213,24 +172,47 @@ class FusionV2:
         self._seen_deal_tickets: set[str] = set()
         self._active_signal_correlation_id = ""
         self.decision_orchestrator = self._build_decision_orchestrator()
-        self.event_bus = FusionEventBus()
-        event_cfg = self.config.get("event_bus", {}) or {}
-        self.event_logger = FusionEventLogger(
-            log_dir=event_cfg.get("event_log_dir", "logs/events"),
-            enabled=bool(event_cfg.get("event_log_enabled", True)),
+        self.decision_evaluator = DecisionEvaluationService(
+            decision_orchestrator=self.decision_orchestrator,
+            logger=self.logger,
         )
-        self.event_bus.subscribe(FusionEventBus.ALL_EVENTS, self.event_logger.handle)
-        self._event_bus_async = bool(event_cfg.get("use_async", False))
-        self._event_bus_async_stop_timeout = float(event_cfg.get("async_stop_timeout", 10) or 10)
+        self.event_bus, self.event_logger, self._event_bus_async, self._event_bus_async_stop_timeout = self.runtime_bootstrap.build_event_bus()
+        self.event_service = FusionEventService(
+            event_bus=self.event_bus,
+            logger=self.logger,
+            async_mode=self._event_bus_async,
+        )
+        self.decision_audit_service = DecisionAuditService(
+            config=self.config,
+            logger=self.logger,
+            decision_orchestrator=self.decision_orchestrator,
+            publish_event=self.event_service.publish,
+            decision_layers_state=self.decision_layers_state,
+            active_signal_correlation_id_getter=lambda: self._active_signal_correlation_id,
+        )
         if self._event_bus_async:
             self.event_bus.start_async()
         self.oms = FusionOMS()
-        oms_cfg = self.config.get("oms", {}) or {}
-        self.oms_snapshot_writer = OMSSnapshotWriter(
-            output_dir=oms_cfg.get("snapshot_dir", "logs/oms"),
-            enabled=bool(oms_cfg.get("snapshot_enabled", True)),
+        self.oms_snapshot_writer = self.runtime_bootstrap.build_oms_snapshot_writer()
+        self.execution_controls = ExecutionControlService(
+            config=self.config,
+            runtime_control=self.runtime_control,
+            logger=self.logger,
+            cwd=Path.cwd(),
         )
         self.engine_registry = FusionEngineRegistry()
+        
+        # Inicializar delegados
+        self.model_loader = ModelLoader(self.config, self.logger)
+        self.signal_filters = SignalFilters(self.config, self.logger)
+        self.symbol_manager = SymbolManager(self.config, self.logger, self.oms, self._publish_event)
+        
+        # Vincular estruturas internas aos delegados
+        self.models = self.model_loader.models
+        self.approved_models = self.model_loader.approved_models
+        self.approved_tp_sl = self.model_loader.approved_tp_sl
+        self.sync_dict = self.symbol_manager.sync_dict
+
         self.logger.info(f"[BOOT][TIMING] event bus/oms/registry prontos em {time.perf_counter() - boot_started:.3f}s")
         self.TIMEFRAMES = ["M5", "M15", "M30", "H1", "H4", "D1"]
         self.TF_MINUTES = {"M5": 5, "M15": 15, "M30": 30, "H1": 60, "H4": 240, "D1": 1440}
@@ -242,9 +224,6 @@ class FusionV2:
         self.gold_penultimate_log: dict = {}
         self._last_strategy4_setup_reason = ""
         self._last_strategy4_setup_details = {}
-        self.strategy_features = self._load_strategy_features()
-        self.approved_models: dict = {}
-        self.approved_tp_sl: dict = {}
         
         # Cache de features com TTL para distribuiÃ§Ã£o de processamento
         self.features_cache = {}  # {(symbol, tf): (features_df, timestamp)}
@@ -264,11 +243,33 @@ class FusionV2:
         self.processing_cycle_started_at = 0.0
         self.processing_cycle_completed_at = 0.0
         self.cycle_order_symbols: set[str] = set()
+        self.signal_loop_service = FusionSignalLoopService(self)
+        self.startup_service = FusionStartupService(self)
+        self.oms_service = FusionOMSService(self)
+        self.strategy_service = FusionStrategyService(self)
         self.logger.info(f"[BOOT][TIMING] estruturas principais prontas em {time.perf_counter() - boot_started:.3f}s")
         
         self._trailing_stop_event: threading.Event | None = None
         self._trailing_thread: threading.Thread | None = None
         self.mt5 = mt5
+        # Inicializar FeatureCalculator e EMAAlignment com dependências injetadas
+        self.feature_calc = FeatureCalculator(self.config, self.logger, self.mt5)
+        self.ema_alignment = EMAAlignment(self.config, self.logger, self.feature_calc)
+        parquet_root = Path(__file__).resolve().parents[1] / "data" / "parquet"
+        self.historical_market_provider = HistoricalMarketDataProvider(parquet_root, max_cache_items=32)
+        # Historical engines (profile, zone, acceptance, recency, mtf, decision)
+        self.historical_profile_engine = PriceProfileEngine()
+        self.historical_zone_detector = ZoneDetector()
+        self.historical_acceptance_engine = HistoricalPriceAcceptanceEngine(
+            provider=self.historical_market_provider,
+            base_dir=Path(__file__).resolve().parents[1],
+            profile_engine=self.historical_profile_engine,
+            zone_detector=self.historical_zone_detector,
+        )
+        self.historical_recency_engine = HistoricalRecencyEngine()
+        self.historical_mtf_context_engine = HistoricalMTFContextEngine()
+        self.historical_decision_engine = HistoricalDecisionEngine()
+        self.strategy_features = StrategyFeatures(self.config, self.logger, self.feature_calc)
         self.strategy_runners = [
             Estrategia5(self),
             Estrategia1(self),
@@ -327,19 +328,7 @@ class FusionV2:
         source: str = "FusionV2",
         correlation_id: str = "",
     ) -> None:
-        try:
-            event = FusionEvent(
-                type=event_type,
-                source=source,
-                data=data or {},
-                correlation_id=correlation_id,
-            )
-            if self._event_bus_async:
-                self.event_bus.publish_async(event)
-            else:
-                self.event_bus.publish(event)
-        except Exception as exc:
-            self.logger.warning(f"Falha ao publicar evento {event_type}: {exc}")
+        self.event_service.publish(event_type, data, source=source, correlation_id=correlation_id)
 
     def stop_event_bus(self) -> None:
         if not getattr(self, "_event_bus_async", False):
@@ -375,6 +364,7 @@ class FusionV2:
             ("session_context", SessionEngine, "entry_filters.session_context.enabled"),
             ("portfolio_exposure", PortfolioExposureEngine, "entry_filters.portfolio_exposure.enabled"),
             ("feature_engineering", FeatureEngineeringEngine, "entry_filters.feature_engineering.enabled"),
+            ("factor_engine", FactorEngine, "entry_filters.factor_engine.enabled"),
             ("entry_timing", EntryTimingEngine, "entry_filters.entry_timing.enabled"),
             ("execution_engine", ExecutionEngine, "entry_filters.execution_engine.enabled"),
             ("risk_engine", RiskEngine, "entry_filters.risk_engine.enabled"),
@@ -398,277 +388,99 @@ class FusionV2:
             {"engine_registry": self.engine_registry.snapshot()},
             source="EngineRegistry",
         )
+
+    def evaluate_candidate(self, candidate: SignalCandidate, context: dict | None = None, account: dict | None = None, portfolio: dict | None = None, audit: bool = True):
+        """Avalia um `SignalCandidate` usando motores de fatores, estratégias e classificação de mercado,
+        compõe os `EngineOutput` e executa o `DecisionOrchestrator`.
+        Após a avaliação principal, opcionalmente complementa com a `HistoricalDecisionEngine` quando
+        `decision_engine.historical_enabled` estiver ativo na configuração, registrando o output.
+        """
+        result = self.decision_evaluator.evaluate(candidate, context=context, account=account, portfolio=portfolio, audit=audit)
+
+        try:
+            hist_cfg = self.config.get("decision_engine", {}) or {}
+            if bool(hist_cfg.get("historical_enabled", False)):
+                # determine end index for historical queries
+                bar_count = self.historical_market_provider.bar_count(candidate.symbol, candidate.timeframe)
+                end_index = max(0, int(bar_count) - 1)
+                lookback = int(self.config.get("entry_filters", {}).get("historical_price_acceptance", {}).get("lookback_bars", 80) or 80)
+
+                acceptance = self.historical_acceptance_engine.evaluate(candidate.symbol, candidate.timeframe, end_index, lookback, use_profile=True)
+
+                # build a simple DataFrame from recent bars for recency/mtf engines
+                bars = self.historical_market_provider.get_bars(candidate.symbol, candidate.timeframe, end_index, lookback)
+                rows = []
+                for b in bars:
+                    rows.append(
+                        {
+                            "time": getattr(b, "timestamp", None),
+                            "open": getattr(b, "open", 0.0),
+                            "high": getattr(b, "high", 0.0),
+                            "low": getattr(b, "low", 0.0),
+                            "close": getattr(b, "close", 0.0),
+                            "volume": getattr(b, "volume", 0.0),
+                        }
+                    )
+                import pandas as _pd
+                frame = _pd.DataFrame(rows)
+
+                recency = self.historical_recency_engine.evaluate(frame)
+                mtf = self.historical_mtf_context_engine.evaluate({candidate.timeframe: frame})
+
+                zone_type = None
+                zone_low = None
+                zone_high = None
+                zone_ctx = acceptance.details.get("zone_context") if acceptance.details else None
+                if isinstance(zone_ctx, dict) and zone_ctx.get("zones"):
+                    zone = self.historical_zone_detector.current_zone(zone_ctx, acceptance.current_price)
+                    if zone:
+                        zone_type = zone.get("zone_type")
+                        zone_low = zone.get("price_low")
+                        zone_high = zone.get("price_high")
+
+                hist_decision = self.historical_decision_engine.evaluate(
+                    acceptance_status=acceptance.status,
+                    zone_type=zone_type,
+                    recent_bias=recency.get("recent_bias"),
+                    mtf_alignment=mtf.get("alignment"),
+                    price=acceptance.current_price,
+                    zone_low=zone_low,
+                    zone_high=zone_high,
+                )
+
+                # register as engine output for observability
+                self._record_engine_output(
+                    "historical_decision",
+                    direction=(hist_decision.get("decision") or "NEUTRAL").upper(),
+                    score=float(hist_decision.get("confidence", 0.0) or 0.0),
+                    confidence=float(hist_decision.get("confidence", 0.0) or 0.0),
+                    positive_factors=hist_decision.get("reasons", []),
+                    features=hist_decision.get("details", {}),
+                )
+
+        except Exception as exc:
+            self.logger.exception("Falha ao integrar historical decision engine: %s", exc)
+
+        return result
     
     def initialize(self) -> bool:
         """Inicializa MT5 e carrega modelos."""
-        startup_started = time.perf_counter()
-        self.logger.info("=" * 80)
-        self.logger.info("?? FUSION_V2 - SISTEMA DE TRADING IA - INICIALIZAÃ‡ÃƒO")
-        self.logger.info("=" * 80)
-        self.logger.info(f"[STARTUP] timestamp_inicial={datetime.now().isoformat(timespec='seconds')}")
-        
-        # Log de configuraÃ§Ã£o geral
-        config_started = time.perf_counter()
-        self.logger.info(f"[STARTUP] Config recarregada: {self.config.config_file if hasattr(self.config, 'config_file') else 'default'}")
-        symbols_cfg = self.config.get("symbols", []) or []
-        self._log_timing(
-            "startup.config_lido",
-            config_started,
-            extra=f"ativos={len(symbols_cfg)} preview={symbols_cfg[:5]}{'...' if len(symbols_cfg) > 5 else ''}"
-        )
-
-        runtime_filters = self.runtime_control.section("filters")
-        self.logger.info(
-            "[RUNTIME] path=%s enabled=%s market_briefing_mode=%s macro_flow_mode=%s "
-            "market_alignment_mode=%s timeframe_consensus_mode=%s"
-            % (
-                self.runtime_control.path,
-                self.runtime_control.enabled(),
-                runtime_filters.get("market_briefing_mode", "yaml"),
-                runtime_filters.get("macro_flow_mode", "yaml"),
-                runtime_filters.get("market_alignment_mode", "yaml"),
-                runtime_filters.get("timeframe_consensus_mode", "yaml"),
-            )
-        )
-
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Conectando ao MT5...")
-        if not MT5Connector.initialize():
-            self.logger.critical("? Falha ao inicializar MT5")
-            return False
-        elapsed = time.perf_counter() - step_started
-        self.logger.info(f"? [STARTUP] MT5 inicializado em {elapsed:.2f}s")
-        
-        step_started = time.perf_counter()
-        acc = mt5.account_info()
-        if acc:
-            self.logger.info(f"   ?? Conta: {acc.login} | Corretora: {acc.server} | Moeda: {acc.currency}")
-            self.logger.info(f"   ?? Saldo: {acc.balance:.2f} | PatrimÃ´nio: {acc.equity:.2f} | Margem Livre: {acc.margin_free:.2f}")
-            self._refresh_oms_state()
-        elapsed = time.perf_counter() - step_started
-        self.logger.info(f"? [STARTUP] Conta/OMS sincronizados em {elapsed:.2f}s")
-
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Carregando modelos IA por ativo/timeframe...")
-        self._load_all_models()
-        models_count = len(self.models)
-        self._log_timing("startup.modelos_carregados", step_started, extra=f"modelos={models_count}")
-        if models_count == 0:
-            self.logger.warning("??  Nenhum modelo encontrado! Verifique pasta models/")
-
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Carregando ensembles M5 aprovados...")
-        self._load_approved_ensembles()
-        
-        ensembles_count = len(self.approved_models)
-        self._log_timing("startup.ensembles_carregados", step_started, extra=f"ensembles={ensembles_count}")
-
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Carregando TP/SL otimizado...")
-        self.approved_tp_sl = self._load_approved_tp_sl()
-        
-        tpsl_count = len(self.approved_tp_sl)
-        self._log_timing("startup.tpsl_carregados", step_started, extra=f"tp_sl={tpsl_count}")
-
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Sincronizando sÃ­mbolos com broker...")
-        self._sync_symbols()
-        
-        synced_count = len(self.sync_dict)
-        self._log_timing("startup.sincronizacao_simbolos", step_started, extra=f"ativos={synced_count}")
-
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Bootstrap da matriz operacional...")
-        self._bootstrap_operational_target_matrix()
-        
-        self._log_timing("startup.matriz_operacional", step_started)
-
-
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Registrando mapa de estratÃ©gias...")
-        self._log_strategy_magic_map()
-        
-        self._log_timing("startup.mapa_estrategias", step_started)
-        
-        step_started = time.perf_counter()
-        self.logger.info("[STARTUP] Inicializando engines de decisÃ£o...")
-        engines_registered = len(self.engine_registry.engines)
-        strategies_count = len(self.strategy_runners)
-        self._log_timing(
-            "startup.engines_decisao",
-            step_started,
-            extra=f"engines={engines_registered} estrategias={strategies_count}"
-        )
-        
-        total_elapsed = time.perf_counter() - startup_started
-        
-        self.logger.info("=" * 80)
-        
-        self.logger.info(f"?? INICIALIZAÃ‡ÃƒO CONCLUÃDA em {total_elapsed:.2f}s ({int(total_elapsed//60)}m{int(total_elapsed%60)}s)")
-        self.logger.info(f"[STARTUP] timestamp_final={datetime.now().isoformat(timespec='seconds')}")
-        
-        self.logger.info(f"   ?? {models_count} modelos | {ensembles_count} ensembles | {synced_count} ativos")
-        
-        self.logger.info(f"   ??  {engines_registered} engines | {strategies_count} estratÃ©gias ativas")
-        
-        self.logger.info(f"   ?? Cache TTL: {self.features_cache_ttl}s | Cleanup: 60s")
-        
-        self.logger.info("=" * 80)
-        
-
-        return True
-
+        return self.startup_service.initialize()
 
     def _current_configured_symbols(self) -> list[str]:
-        symbols = [str(item).upper() for item in (self.config.get("symbols", []) or [])]
+        symbols = self.execution_controls.current_configured_symbols()
         if not symbols and self.sync_dict:
             symbols = [str(item).upper() for item in self.sync_dict.values()]
         return sorted(set(symbols))
 
     def _operational_matrix_due(self, latest_path: Path, symbols: list[str]) -> tuple[bool, list[str], str]:
-        if not latest_path.exists():
-            return True, symbols, "arquivo_ausente"
-        try:
-            payload = json.loads(latest_path.read_text(encoding="utf-8"))
-        except Exception:
-            return True, symbols, "arquivo_invalido"
-
-        today = datetime.now().strftime("%Y-%m-%d")
-        matrix_date = str(payload.get("date") or "")
-        matrix_symbols = {str(item).upper() for item in (payload.get("symbols", []) or [])}
-        requested = {str(item).upper() for item in symbols}
-        missing = sorted(requested - matrix_symbols)
-        if matrix_date != today:
-            return True, symbols, f"data_desatualizada:{matrix_date or 'sem_data'}"
-        if missing:
-            return True, missing, f"ativos_novos:{','.join(missing)}"
-        return False, [], "atualizada"
+        return self.execution_controls.operational_matrix_due(latest_path, symbols)
 
     def _bootstrap_operational_target_matrix(self) -> None:
-        cfg = self.config.get("operational_target_matrix", {}) or {}
-        if not bool(cfg.get("enabled", False)) or not bool(cfg.get("update_on_startup", True)):
-            return
-
-        symbols = self._current_configured_symbols()
-        if not symbols:
-            self.logger.warning("[TARGET_MATRIX] Sem ativos configurados para atualizar matriz")
-            return
-
-        output_dir = Path(str(cfg.get("output_dir", "reports/operational_target_matrix") or "reports/operational_target_matrix"))
-        if not output_dir.is_absolute():
-            output_dir = Path.cwd() / output_dir
-        latest_path = Path(str(cfg.get("latest_path", output_dir / "operational_target_matrix_latest.json")))
-        if not latest_path.is_absolute():
-            latest_path = Path.cwd() / latest_path
-
-        due, update_symbols, reason = self._operational_matrix_due(latest_path, symbols)
-        if not due:
-            self.logger.info(f"[TARGET_MATRIX] Matriz operacional atualizada: {latest_path}")
-            return
-
-        lookback_days = max(int(cfg.get("lookback_days", 5) or 5), 1)
-        end_dt = datetime.now()
-        start_dt = end_dt - timedelta(days=lookback_days)
-        dates = []
-        cursor = start_dt
-        while cursor.date() <= end_dt.date():
-            dates.append(cursor.strftime("%Y%m%d"))
-            cursor += timedelta(days=1)
-
-        cmd = [
-            sys.executable,
-            str(Path.cwd() / "tools" / "build_operational_target_matrix.py"),
-        ]
-        for date_label in dates:
-            cmd.extend(["--date", date_label])
-        cmd.extend(
-            [
-                "--symbols",
-                ",".join(update_symbols or symbols),
-                "--only-decision",
-                str(cfg.get("decision_filter", "ALLOW") or ""),
-                "--market-time-offset-hours",
-                str(float(cfg.get("market_time_offset_hours", 6) or 6)),
-                "--lookahead-minutes",
-                str(int(cfg.get("lookahead_minutes", 240) or 240)),
-                "--min-samples",
-                str(int(cfg.get("min_samples", 10) or 10)),
-                "--max-loss-streak",
-                str(int(cfg.get("max_loss_streak", 4) or 4)),
-                "--min-win-rate",
-                str(float(cfg.get("min_win_rate", 45.0) or 45.0)),
-                "--targets",
-                ",".join(str(item) for item in (cfg.get("targets", [5, 10, 15, 20, 25, 30, 40, 50]) or [])),
-                "--stops",
-                ",".join(str(item) for item in (cfg.get("stops", [10, 15, 20, 25, 30, 40, 50, 70, 100]) or [])),
-                "--start",
-                start_dt.strftime("%Y-%m-%d %H:%M:%S"),
-                "--end",
-                end_dt.strftime("%Y-%m-%d %H:%M:%S"),
-                "--output-dir",
-                str(output_dir),
-            ]
-        )
-        if bool(cfg.get("use_mt5", True)):
-            cmd.append("--use-mt5")
-        if bool(cfg.get("save_mt5_history", True)):
-            cmd.append("--save-mt5-history")
-
-        self.logger.info(
-            f"[TARGET_MATRIX] Atualizando matriz operacional | motivo={reason} | ativos={len(update_symbols or symbols)}"
-        )
-
-        def run_update() -> None:
-            try:
-                completed = subprocess.run(
-                    cmd,
-                    cwd=str(Path.cwd()),
-                    capture_output=True,
-                    text=True,
-                    timeout=max(int(cfg.get("max_startup_seconds", 600) or 600), 30),
-                )
-                if completed.returncode != 0:
-                    self.logger.warning(
-                        f"[TARGET_MATRIX] Falha ao atualizar matriz rc={completed.returncode}: {completed.stderr[-1200:]}"
-                    )
-                    return
-                self.logger.info(f"[TARGET_MATRIX] Matriz atualizada: {latest_path}")
-                if completed.stdout:
-                    self.logger.info(f"[TARGET_MATRIX] {completed.stdout.strip().splitlines()[-1]}")
-            except subprocess.TimeoutExpired:
-                self.logger.warning("[TARGET_MATRIX] Atualizacao excedeu timeout; Fusion seguira com a matriz existente")
-            except Exception as exc:
-                self.logger.warning(f"[TARGET_MATRIX] Falha ao atualizar matriz: {exc}")
-
-        startup_mode = str(cfg.get("startup_mode", "blocking") or "blocking").strip().lower()
-        if startup_mode in {"skip", "manual", "disabled", "off"}:
-            self.logger.info(f"[TARGET_MATRIX] Atualizacao pendente ignorada no startup | modo={startup_mode}")
-            return
-        if startup_mode in {"background", "async", "thread"}:
-            thread = threading.Thread(
-                target=run_update,
-                name="FusionTargetMatrixBootstrap",
-                daemon=True,
-            )
-            thread.start()
-            self.logger.info("[TARGET_MATRIX] Atualizacao iniciada em segundo plano; Fusion seguira a inicializacao")
-            return
-
-        run_update()
+        self.execution_controls.bootstrap_operational_target_matrix()
 
     def _load_operational_target_matrix(self, path_value: str | Path | None = None) -> dict:
-        cfg = self.config.get("operational_target_matrix", {}) or {}
-        path = Path(str(path_value or cfg.get("latest_path", "reports/operational_target_matrix/operational_target_matrix_latest.json")))
-        if not path.is_absolute():
-            path = Path.cwd() / path
-        if not path.exists():
-            return {}
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-            return payload if isinstance(payload, dict) else {}
-        except Exception as exc:
-            self.logger.warning(f"[TARGET_MATRIX] Falha ao carregar matriz {path}: {exc}")
-            return {}
+        return self.execution_controls.load_operational_target_matrix(path_value)
 
     def _refine_panel_signal(
         self,
@@ -739,698 +551,70 @@ class FusionV2:
             new_reasons.append(f"panel_refined:matrix_ok:tp={tp}:sl={sl}:wr={win_rate}")
 
         return pred, p_buy, p_sell, new_reasons
-    
+
     def _load_all_models(self):
-        """Carrega todos os modelos por sÃ­mbolo/timeframe."""
-        import joblib
-        from pathlib import Path
-        models_dir = Path(self.config.model.model_dir)
-        self.logger.info(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | inicio varredura | dir={models_dir}")
-        
-        print(f"[DEBUG _load_all_models] Models dir: {models_dir}")
-        
-        self.logger.debug(f"   Procurando modelos em: {models_dir.absolute()}")
-        
-        if not models_dir.exists():
-            self.logger.error(f"? DiretÃ³rio de modelos nÃ£o encontrado: {models_dir}")
-            return
-        
-        configured_symbols = {str(item).upper() for item in (self.config.get("symbols", []) or [])}
-        research_variants = [
-            ("lightgbm", "raw"),
-            ("lightgbm", "isotonic"),
-            ("lightgbm", "logistic"),
-            ("catboost", "raw"),
-            ("catboost", "isotonic"),
-            ("catboost", "logistic"),
-        ]
-        loaded = 0
-        failed = 0
-        per_symbol_counts: dict[str, int] = {}
-        load_started = time.perf_counter()
-
-        tasks = []
-        for sym_dir in models_dir.iterdir():
-            if not sym_dir.is_dir():
-                continue
-            symbol = sym_dir.name
-            if configured_symbols and symbol.upper() not in configured_symbols:
-                continue
-
-            self.logger.info(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | varrendo simbolo={symbol}")
-
-            for tf_dir in sym_dir.iterdir():
-                if not tf_dir.is_dir():
-                    continue
-                tf = tf_dir.name
-                self.logger.info(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | preparando {symbol}/{tf}")
-
-                candidates = [
-                    (tf_dir / "model.pkl", tf_dir / "scaler.pkl", tf_dir / "meta.pkl", None, "runtime")
-                ]
-                for model_name, calibrator_name in research_variants:
-                    variant_dir = tf_dir / model_name / calibrator_name
-                    candidates.append(
-                        (
-                            variant_dir / "model.pkl",
-                            variant_dir / "scaler.pkl",
-                            variant_dir / "meta.json",
-                            variant_dir / "calibrator.pkl",
-                            f"research:{model_name}/{calibrator_name}",
-                        )
-                    )
-                tasks.append((symbol, tf, candidates))
-
-        def load_one_model(symbol: str, tf: str, candidates: list[tuple]) -> tuple[str, str, SingleModel | None, str]:
-            self.logger.info(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | tentando {symbol}/{tf} | candidatos={len(candidates)}")
-            for model_path, scaler_path, meta_path, calibrator_path, source in candidates:
-                if not all(p.exists() for p in [model_path, scaler_path, meta_path]):
-                    self.logger.debug(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | faltando arquivo {symbol}/{tf} | source={source}")
-                    continue
-                try:
-                    if calibrator_path is not None and not calibrator_path.exists():
-                        calibrator_path = None
-                    model = SingleModel(model_path, scaler_path, meta_path, calibrator_path)
-                    self.logger.info(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | carregado {symbol}/{tf} | source={source}")
-                    return symbol, tf, model, source
-                except Exception as exc:
-                    self.logger.warning(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | erro {symbol}/{tf} | source={source} | {exc}")
-                    return symbol, tf, None, f"{source}:{exc}"
-            self.logger.warning(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | sem candidato valido {symbol}/{tf}")
-            return symbol, tf, None, ""
-
-        max_workers = max(2, min(8, (os.cpu_count() or 4)))
-        if len(tasks) <= 1:
-            max_workers = 1
-
-        with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="FusionModelLoad") as executor:
-            futures = [executor.submit(load_one_model, symbol, tf, candidates) for symbol, tf, candidates in tasks]
-            for future in as_completed(futures):
-                symbol, tf, model, source = future.result()
-                if model is not None:
-                    self.models[(symbol, tf)] = model
-                    loaded += 1
-                    per_symbol_counts[symbol] = per_symbol_counts.get(symbol, 0) + 1
-                    if source != "runtime":
-                        self.logger.debug(f"   ?? Modelo research: {symbol}/{tf} | {source}")
-                else:
-                    failed += 1
-                    if source:
-                        self.logger.warning(f"   ??  Erro ao carregar {symbol}/{tf}: {source}")
-        
-        self.logger.info(f"[BOOT][models] {datetime.now().isoformat(timespec='seconds')} | fim carregamento | carregados={loaded} erros={failed}")
-        if per_symbol_counts:
-            self.logger.info(
-                f"[TIMING] {datetime.now().isoformat(timespec='seconds')} | modelos_por_ativo | "
-                f"{time.perf_counter() - load_started:.3f}s | "
-                + ", ".join(f"{sym}:{count}" for sym, count in sorted(per_symbol_counts.items())[:12])
-            )
-        if self.config.signal.invert_signals:
-            self.logger.warning("?  SINAIS INVERTIDOS: COMPRA vira VENDA e VENDA vira COMPRA")
-
-        inverted_groups = getattr(self.config.signal, "inverted_signal_groups", []) or []
-        enabled_inverted_groups = [
-            item for item in inverted_groups
-            if isinstance(item, dict) and bool(item.get("enabled", True))
-        ]
-        if enabled_inverted_groups:
-            self.logger.warning(
-                f"SINAIS INVERTIDOS POR GRUPO: {len(enabled_inverted_groups)} ativo/timeframe(s)"
-            )
+        """Carrega todos os modelos por símbolo/timeframe."""
+        self.model_loader.load_all_models()
 
     def _load_approved_ensembles(self):
         """Carrega ensembles M5 aprovados do FUSION refatorado em modo staging."""
-        cfg = self.config.get("approved_ensembles", {}) or {}
-        self.logger.info(f"[BOOT][approved_ensembles] {datetime.now().isoformat(timespec='seconds')} | inicio | enabled={bool(cfg.get('enabled', True))}")
-        if not bool(cfg.get("enabled", True)):
-            self.logger.info("Approved ensembles desativados em config")
-            return
-        registry_path = Path(cfg.get("registry_path", "fusion_refatorado/models/production_registry/M5_approved_ensembles.json"))
-        if not registry_path.is_absolute():
-            registry_path = Path.cwd() / registry_path
-        loader = ApprovedEnsembleRegistry(
-            registry_path=registry_path,
-            min_member_weight=float(cfg.get("min_member_weight", 0.25)),
-            min_score=float(cfg.get("min_score", 0.25)),
-            bars=int(cfg.get("bars", 1200)),
-        )
-        self.approved_models = loader.load()
-        self.logger.info(f"[BOOT][approved_ensembles] {datetime.now().isoformat(timespec='seconds')} | fim | carregados={len(self.approved_models)}")
+        self.model_loader.load_approved_ensembles()
 
     def _load_approved_tp_sl(self) -> dict:
         """Carrega TP/SL otimizado por ativo/timeframe para strategy5."""
-        cfg = self.config.get("approved_ensembles", {}) or {}
-        path = Path(cfg.get("tp_sl_report", "features/features_backteste_ativo_timeframe.csv"))
-        self.logger.info(f"[BOOT][tpsl] {datetime.now().isoformat(timespec='seconds')} | inicio | path={path}")
-        if not path.is_absolute():
-            path = Path.cwd() / path
-        if not path.exists():
-            self.logger.warning(f"Relatorio TP/SL ausente para approved ensembles: {path}")
-            return {}
-        try:
-            df = pd.read_csv(path)
-            result = {}
-            for _, row in df.iterrows():
-                key = (str(row["symbol"]).upper(), str(row["timeframe"]).upper())
-                result[key] = {
-                    "target": int(float(row.get("best_target", 500))),
-                    "stop_sugerido": int(float(row.get("stop_sugerido", 150))),
-                }
-            self.logger.info(f"[BOOT][tpsl] {datetime.now().isoformat(timespec='seconds')} | fim | carregados={len(result)}")
-            return result
-        except Exception as exc:
-            self.logger.warning(f"Falha ao carregar TP/SL aprovado: {exc}")
-            return {}
+        return self.model_loader.load_approved_tp_sl()
     
     def _sync_symbols(self):
-        """Sincroniza sÃ­mbolos do broker."""
-        broker_symbols = {s.name.upper(): s.name for s in mt5.symbols_get()}
-        self.logger.debug(f"   SÃ­mbolos no broker: {len(broker_symbols)}")
-        
-        raw_configured_symbols = list(self.config.get("symbols", []) or [])
-        configured_symbols = []
-        for item in raw_configured_symbols:
-            symbol = str(item or "").strip()
-            if not symbol:
-                self.logger.warning("[SYNC_SYMBOLS] Ignorando simbolo vazio/nulo em config.symbols")
-                continue
-            configured_symbols.append(symbol)
-        
-        configured_upper = {item.upper() for item in configured_symbols}
-        for strategy_name in ["strategy4"]:
-            strategy_cfg = self._strategy_config(strategy_name)
-            if not bool(strategy_cfg.get("enabled", False)):
-                continue
-            strategy_symbol = str(strategy_cfg.get("symbol", "") or "").strip()
-            if strategy_symbol and strategy_symbol.upper() not in configured_upper:
-                configured_symbols.append(strategy_symbol)
-                configured_upper.add(strategy_symbol.upper())
-        
-        contract_overrides = self.config.get("contracts.overrides", {}) or {}
-        synced_symbols = []
-
-        for sym in configured_symbols:
-            sym_upper = sym.upper()
-            mapped = self.config.data.symbol_mapping.get(sym, self.config.data.symbol_mapping.get(sym_upper))
-            if mapped and mapped.upper() in broker_symbols:
-                real = broker_symbols[mapped.upper()]
-                mt5.symbol_select(real, True)
-                self.sync_dict[real] = sym
-                self._sync_contract(sym, real, contract_overrides)
-                synced_symbols.append(f"{sym}?{real}")
-                continue
-
-            if sym_upper in broker_symbols:
-                real = broker_symbols[sym_upper]
-                mt5.symbol_select(real, True)
-                self.sync_dict[real] = sym
-                self._sync_contract(sym, real, contract_overrides)
-                synced_symbols.append(f"{sym}")
-                continue
-
-            if sym_upper in ["XAUUSD", "GOLD"]:
-                for name in broker_symbols:
-                    if "GOLD" in name.upper() or "XAUUSD" in name:
-                        mt5.symbol_select(broker_symbols[name], True)
-                        self.sync_dict[broker_symbols[name]] = sym
-                        self._sync_contract(sym, broker_symbols[name], contract_overrides)
-                        synced_symbols.append(f"{sym}?{broker_symbols[name]}")
-                        break
-        
-        if synced_symbols:
-            self.logger.debug(f"   Ativos sincronizados: {', '.join(synced_symbols[:8])}" + ("..." if len(synced_symbols) > 8 else ""))
-        
-        self.logger.info(f"   ? {len(self.sync_dict)} ativos online | {len(broker_symbols)} disponÃ­veis no broker")
+        """Sincroniza símbolos do broker."""
+        self.symbol_manager.sync_symbols()
 
     def _sync_contract(self, sym_ia: str, broker_sym: str, overrides: dict | None = None) -> None:
-        if mt5 is None:
-            return
-        try:
-            info = mt5.symbol_info(broker_sym)
-            if info is None:
-                return
-            override = None
-            for key in [sym_ia, sym_ia.upper(), broker_sym, broker_sym.upper()]:
-                if isinstance(overrides, dict) and key in overrides:
-                    override = overrides[key]
-                    break
-            contract = apply_contract_override(contract_from_mt5_info(sym_ia.upper(), broker_sym, info), override)
-            self.oms.update_contract(contract)
-            self._publish_event(
-                FusionEventType.DASHBOARD_UPDATE,
-                {"contract": contract.to_dict()},
-                source="ContractSync",
-                correlation_id=f"{sym_ia.upper()}:CONTRACT",
-            )
-        except Exception as exc:
-            self.logger.warning(f"Falha ao sincronizar contrato {sym_ia}/{broker_sym}: {exc}")
+        self.symbol_manager._sync_contract(sym_ia, broker_sym, overrides)
 
     def _refresh_oms_state(self) -> None:
-        if mt5 is None:
-            return
-        try:
-            log_ticks = bool((self.config.get("event_bus", {}) or {}).get("log_tick_updates", False))
-            for broker_symbol, sym_ia in self.sync_dict.items():
-                tick = mt5.symbol_info_tick(broker_symbol)
-                if tick is None:
-                    continue
-                bid = float(getattr(tick, "bid", 0.0) or 0.0)
-                ask = float(getattr(tick, "ask", 0.0) or 0.0)
-                fusion_tick = FusionTick(
-                    symbol=sym_ia.upper(),
-                    broker_symbol=broker_symbol,
-                    bid=bid,
-                    ask=ask,
-                    last=float(getattr(tick, "last", 0.0) or 0.0),
-                    volume=float(getattr(tick, "volume", 0.0) or 0.0),
-                    spread=max(0.0, ask - bid) if ask and bid else 0.0,
-                )
-                self.oms.update_tick(fusion_tick)
-                if log_ticks:
-                    self._publish_event(
-                        FusionEventType.TICK_UPDATE,
-                        fusion_tick.to_dict(),
-                        source="OMS",
-                        correlation_id=f"{sym_ia.upper()}:TICK",
-                    )
-        except Exception as exc:
-            self.logger.warning(f"Falha ao atualizar ticks no OMS: {exc}")
-
-        try:
-            account = mt5.account_info()
-            if account is not None:
-                fusion_account = FusionAccount(
-                    account_id=str(getattr(account, "login", "") or ""),
-                    balance=float(getattr(account, "balance", 0.0) or 0.0),
-                    equity=float(getattr(account, "equity", 0.0) or 0.0),
-                    margin=float(getattr(account, "margin", 0.0) or 0.0),
-                    free_margin=float(getattr(account, "margin_free", 0.0) or 0.0),
-                    currency=str(getattr(account, "currency", "") or ""),
-                )
-                self.oms.update_account(fusion_account)
-                self._publish_event(
-                    FusionEventType.ACCOUNT_UPDATE,
-                    fusion_account.to_dict(),
-                    source="OMS",
-                    correlation_id=f"ACCOUNT:{fusion_account.account_id}",
-                )
-        except Exception as exc:
-            self.logger.warning(f"Falha ao atualizar conta no OMS: {exc}")
-
-        try:
-            positions = mt5.positions_get()
-            positions = list(positions) if positions else []
-            for pos in positions:
-                broker_symbol = str(getattr(pos, "symbol", "") or "")
-                symbol = self._broker_symbol_to_base(broker_symbol)
-                direction = "BUY" if int(getattr(pos, "type", -1)) == mt5.ORDER_TYPE_BUY else "SELL"
-                fusion_position = FusionPosition(
-                    position_id=str(getattr(pos, "ticket", "") or ""),
-                    symbol=symbol,
-                    broker_symbol=broker_symbol,
-                    direction=direction,
-                    volume=float(getattr(pos, "volume", 0.0) or 0.0),
-                    price_open=float(getattr(pos, "price_open", 0.0) or 0.0),
-                    price_current=float(getattr(pos, "price_current", 0.0) or 0.0),
-                    profit=float(getattr(pos, "profit", 0.0) or 0.0),
-                    magic=int(getattr(pos, "magic", 0) or 0),
-                )
-                self.oms.update_position(fusion_position)
-                self._publish_event(
-                    FusionEventType.POSITION_UPDATE,
-                    fusion_position.to_dict(),
-                    source="OMS",
-                    correlation_id=f"{symbol}:POSITION:{fusion_position.position_id}",
-                )
-        except Exception as exc:
-            self.logger.warning(f"Falha ao atualizar posicoes no OMS: {exc}")
-
-        try:
-            cfg = self.config.get("oms", {}) or {}
-            lookback_hours = int(cfg.get("trade_history_lookback_hours", 24) or 24)
-            history_from = datetime.now() - timedelta(hours=max(1, lookback_hours))
-            deals = mt5.history_deals_get(history_from, datetime.now())
-            deals = list(deals) if deals else []
-            for deal in deals:
-                ticket = str(getattr(deal, "ticket", "") or "")
-                if not ticket or ticket in self._seen_deal_tickets:
-                    continue
-                self._seen_deal_tickets.add(ticket)
-                broker_symbol = str(getattr(deal, "symbol", "") or "")
-                if not broker_symbol:
-                    continue
-                symbol = self._broker_symbol_to_base(broker_symbol)
-                deal_type = int(getattr(deal, "type", -1))
-                direction = "BUY" if deal_type == getattr(mt5, "DEAL_TYPE_BUY", 0) else "SELL"
-                trade = FusionTrade(
-                    trade_id=ticket,
-                    order_id=str(getattr(deal, "order", "") or ""),
-                    symbol=symbol,
-                    broker_symbol=broker_symbol,
-                    direction=direction,
-                    volume=float(getattr(deal, "volume", 0.0) or 0.0),
-                    price=float(getattr(deal, "price", 0.0) or 0.0),
-                    profit=float(getattr(deal, "profit", 0.0) or 0.0),
-                    metadata={
-                        "position_id": getattr(deal, "position_id", ""),
-                        "magic": getattr(deal, "magic", 0),
-                        "comment": getattr(deal, "comment", ""),
-                        "entry": getattr(deal, "entry", ""),
-                    },
-                )
-                self.oms.update_trade(trade)
-                self._publish_event(
-                    FusionEventType.TRADE_UPDATE,
-                    trade.to_dict(),
-                    source="OMS",
-                    correlation_id=f"{symbol}:TRADE:{ticket}",
-                )
-        except Exception as exc:
-            self.logger.warning(f"Falha ao atualizar deals/trades no OMS: {exc}")
-        try:
-            self.oms_snapshot_writer.write(self.oms)
-        except Exception as exc:
-            self.logger.warning(f"Falha ao gravar snapshot do OMS: {exc}")
+        self.oms_service.refresh_state()
     
-    def _calculate_features(self, symbol: str, tf: str) -> dict:
-        """Calcula features para sÃ­mbolo/timeframe com cache TTL."""
-        key = (symbol.upper(), tf.upper())
-        now = time.time()
-        
-        # 1. Verifica cache
-        if key in self.features_cache:
-            features, timestamp = self.features_cache[key]
-            age = now - timestamp
-            if age < self.features_cache_ttl:
-                self.features_cache_hits += 1
-                return features  # HIT! Retorna cache sem recalcular
-            # Cache expirou, precisa recalcular
-        
-        # 2. Se nÃ£o estÃ¡ em cache ou expirou, calcula
-        self.features_cache_misses += 1
-        
-        df = self._get_rates_frame(symbol, tf, 100, start_pos=0, min_rows=100)
-        if df.empty:
-            return pd.DataFrame()
-        df.set_index('time', inplace=True)
-        
-        if len(df) < 100:
-            return pd.DataFrame()
-        
-        features = pd.DataFrame(index=df.index)
-        close = df['close']
-        high = df['high']
-        low = df['low']
-        
-        ret = np.log(close / close.shift(1))
-        features['ret'] = ret
-        features['ret_5'] = ret.rolling(5).sum()
-        features['ret_10'] = ret.rolling(10).sum()
-        features['ret_20'] = ret.rolling(20).sum()
-        
-        rsi14 = RSI.calculate(df, 14)
-        rsi28 = RSI.calculate(df, 28)
-        features['rsi14'] = rsi14
-        features['rsi28'] = rsi28
-        features['rsi_diff'] = rsi14 - rsi28
-        features['rsi_ma5'] = rsi14.rolling(5).mean()
-        features['rsi_gap'] = rsi14 - rsi14.rolling(10).mean()
-        
-        ema8 = EMA.calculate(df, 8)
-        ema21 = EMA.calculate(df, 21)
-        ema50 = EMA.calculate(df, 50)
-        ema200 = EMA.calculate(df, 200)
-        
-        features['ema8'] = ema8
-        features['ema21'] = ema21
-        features['ema50'] = ema50
-        features['ema200'] = ema200
-        
-        features['dist_ema8'] = (close / ema8) - 1
-        features['dist_ema21'] = (close / ema21) - 1
-        features['dist_ema50'] = (close / ema50) - 1
-        features['dist_ema200'] = (close / ema200) - 1
-        
-        range_pct = (high - low) / close
-        features['range_pct'] = range_pct
-        features['range_ma10'] = range_pct.rolling(10).mean()
-        
-        features['high_20'] = high.rolling(20).max()
-        features['low_20'] = low.rolling(20).min()
-        features['position_in_range'] = (close - features['low_20']) / (features['high_20'] - features['low_20'] + 1e-9)
-        
-        vol5 = ret.rolling(5).std()
-        vol20 = ret.rolling(20).std()
-        features['vol5'] = vol5
-        features['vol20'] = vol20
-        features['vol_ratio'] = vol5 / (vol20 + 1e-9)
-        
-        ema_fast = close.ewm(span=12).mean()
-        ema_slow = close.ewm(span=26).mean()
-        macd_line = ema_fast - ema_slow
-        signal_line = macd_line.ewm(span=9).mean()
-        features['macd'] = macd_line
-        features['macd_signal'] = signal_line
-        features['macd_hist'] = macd_line - signal_line
-        
-        features['upper_bb'] = ema21 + (ret.rolling(20).std() * 2)
-        features['lower_bb'] = ema21 - (ret.rolling(20).std() * 2)
-        features['bb_width'] = features['upper_bb'] - features['lower_bb']
-        
-        features['alpha_vam'] = AlphaMiner.vam(df, 20)
-        features['alpha_effort'] = AlphaMiner.effort(df, 50)
-        features['alpha_mrs'] = AlphaMiner.mrs(df, 20)
-        features['alpha_rsi_gap'] = AlphaMiner.rsi_gap(df, 14)
-        
-        trend_alignment = (rsi14 > 50).astype(int)
-        for period in [5, 10, 20]:
-            ma_trend = (close > EMA.calculate(df, period)).astype(int)
-            trend_alignment = trend_alignment + ma_trend
-        features['trend_alignment'] = trend_alignment
-        
-        raw_cols = ['open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
-        for col in raw_cols:
-            if col in df.columns and col not in features.columns:
-                features[col] = df[col]
-        
-        result = features.dropna().iloc[[-1]]
-        
-        # 3. Armazena em cache
-        self.features_cache[key] = (result, now)
-        
-        return result
-
-    def _rates_tf_code(self, tf: str):
-        if mt5 is None:
-            return None
-        return {
-            "M5": mt5.TIMEFRAME_M5,
-            "M15": mt5.TIMEFRAME_M15,
-            "M30": mt5.TIMEFRAME_M30,
-            "H1": mt5.TIMEFRAME_H1,
-            "H4": mt5.TIMEFRAME_H4,
-            "D1": mt5.TIMEFRAME_D1,
-        }.get(str(tf).upper())
-
-    def _rates_cache_preload_bars(self, tf: str, requested_bars: int) -> int:
-        preload = {
-            "M5": 260,
-            "M15": 260,
-            "M30": 260,
-            "H1": 260,
-            "H4": 260,
-            "D1": 220,
-        }.get(str(tf).upper(), 260)
-        return max(int(requested_bars or 1), preload)
-
-    def _get_rates_frame(self, broker_sym: str, tf: str, bars: int, start_pos: int = 0, min_rows: int = 0) -> pd.DataFrame:
-        if mt5 is None:
-            return pd.DataFrame()
-        tf_code = self._rates_tf_code(tf)
-        if tf_code is None:
-            return pd.DataFrame()
-
-        symbol = str(broker_sym or "").strip()
-        if not symbol:
-            return pd.DataFrame()
-
-        tf_upper = str(tf).upper()
-        start_pos = int(start_pos or 0)
-        bars = max(1, int(bars or 1))
-        min_rows = max(0, int(min_rows or 0))
-        cache_key = (symbol.upper(), tf_upper, start_pos)
-        now = time.time()
-
-        cached = self.rates_cache.get(cache_key)
-        if cached:
-            frame, timestamp, cached_bars = cached
-            if now - timestamp < self.rates_cache_ttl and (start_pos != 0 or cached_bars >= bars):
-                self.rates_cache_hits += 1
-                return frame.copy()
-
-        fetch_bars = bars if start_pos != 0 else self._rates_cache_preload_bars(tf_upper, bars)
-        try:
-            rates = mt5.copy_rates_from_pos(symbol, tf_code, start_pos, fetch_bars)
-        except Exception:
-            return pd.DataFrame()
-
-        if rates is None or len(rates) < max(2, min_rows):
-            return pd.DataFrame()
-
-        df = pd.DataFrame(rates)
-        if df.empty or "time" not in df.columns:
-            return pd.DataFrame()
-
-        df["time"] = pd.to_datetime(df["time"], unit="s")
-        df = df.sort_values("time").reset_index(drop=True)
-        self.rates_cache[cache_key] = (df, now, fetch_bars)
-        self.rates_cache_misses += 1
-        return df.copy()
-
     def _strategy_config(self, strategy_name: str) -> dict:
-        return self.config.get(f"strategies.{strategy_name}", {}) or {}
+        return self.strategy_service._strategy_config(strategy_name)
 
     def _strategy_enabled(self, strategy_name: str) -> bool:
-        return bool(self._strategy_config(strategy_name).get("enabled", False))
+        return self.strategy_service._strategy_enabled(strategy_name)
 
     def _strategy_magic(self, strategy_name: str, tf: str) -> int:
-        tf_minutes = self.TF_MINUTES.get(tf, 5)
-        cfg = self._strategy_config(strategy_name)
-        default_magic_prefix = {
-            "strategy1": 10,
-            "strategy2": 20,
-            "strategy3": 30,
-            "strategy4": 40,
-            "strategy5": 50,
-            "strategy6": 60,
-            "strategy7": 70,
-            "strategy8": 80,
-            "strategy9": 90,
-            "strategy10": 91,
-            "strategy11": 92,
-            "strategy12": 93,
-            "strategy13": 94,
-            "strategy14": 95,
-        }.get(strategy_name, 90)
-        magic_base = int(cfg.get("magic_base", default_magic_prefix))
-        magic_prefix = magic_base if magic_base < 100 else magic_base // 100
-        return int(f"{magic_prefix}{tf_minutes:02d}")
+        return self.strategy_service._strategy_magic(strategy_name, tf)
 
     def _strategy_magic_group(self, strategy_name: str) -> list:
-        cfg = self._strategy_config(strategy_name)
-        legacy_magics = cfg.get("legacy_magics", []) or []
-        magics = {self._strategy_magic(strategy_name, tf) for tf in self.TIMEFRAMES}
-        magics.update(int(magic) for magic in legacy_magics)
-        return sorted(magics)
+        return self.strategy_service._strategy_magic_group(strategy_name)
 
     def _system_magic_group(self) -> list:
-        magics = set()
-        for strategy_name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6", "strategy7", "strategy8", "strategy9", "strategy10", "strategy11", "strategy12", "strategy13", "strategy14"]:
-            magics.update(self._strategy_magic_group(strategy_name))
-        return sorted(magics)
+        return self.strategy_service._system_magic_group()
 
     def _log_strategy_magic_map(self):
-        strategies_active = []
-        for strategy_name in ["strategy1", "strategy2", "strategy3", "strategy4", "strategy5", "strategy6", "strategy7", "strategy8", "strategy9", "strategy10", "strategy11", "strategy12", "strategy13", "strategy14"]:
-            if not self._strategy_enabled(strategy_name):
-                continue
-            magics = ", ".join(f"{tf}={self._strategy_magic(strategy_name, tf)}" for tf in self.TIMEFRAMES)
-            strategies_active.append(strategy_name.upper())
-            self.logger.debug(f"   {strategy_name.upper()} ? magics: {magics}")
-        
-        if strategies_active:
-            self.logger.info(f"   ? EstratÃ©gias ativas: {', '.join(strategies_active)}")
-        else:
-            strategy_keys = list((self.config.get("strategies", {}) or {}).keys())
-            self.logger.warning(f"   ??  Nenhuma estratÃ©gia ativa no config! keys={strategy_keys}")
+        return self.strategy_service._log_strategy_magic_map()
 
     def _strategy_cooldown(self, strategy_name: str) -> int:
-        return int(self._strategy_config(strategy_name).get("cooldown_seconds", 300))
+        return self.strategy_service._strategy_cooldown(strategy_name)
 
     def _recent_close_cooldown_remaining(self, strategy_name: str, broker_sym: str, sym_ia: str, tf: str) -> int:
-        cfg = self.config.get("trading.reentry_cooldown_after_close", {}) or {}
-        if not bool(cfg.get("enabled", True)):
-            return 0
-        if mt5 is None:
-            return 0
-        seconds = int(cfg.get("seconds", self._strategy_cooldown(strategy_name)) or self._strategy_cooldown(strategy_name))
-        if seconds <= 0:
-            return 0
-        scope = str(cfg.get("scope", "system_symbol") or "system_symbol").lower()
-        now = datetime.now()
-        history_from = now - timedelta(seconds=seconds + 120)
-        try:
-            deals = mt5.history_deals_get(history_from, now)
-        except Exception as exc:
-            self.logger.warning(f"Falha ao consultar historico para cooldown pos-fechamento: {exc}")
-            return 0
-        if not deals:
-            return 0
-
-        entry_out = getattr(mt5, "DEAL_ENTRY_OUT", 1)
-        entry_out_by = getattr(mt5, "DEAL_ENTRY_OUT_BY", 3)
-        candidate_symbol = sym_ia.upper()
-        magic_filter = set(self._system_magic_group() if scope.startswith("system") else self._strategy_magic_group(strategy_name))
-        newest_close_time = None
-
-        for deal in deals:
-            deal_symbol = str(getattr(deal, "symbol", "") or "")
-            if deal_symbol != broker_sym and self._broker_symbol_to_base(deal_symbol) != candidate_symbol:
-                continue
-            if magic_filter and int(getattr(deal, "magic", 0) or 0) not in magic_filter:
-                continue
-            entry = int(getattr(deal, "entry", -1))
-            if entry not in {entry_out, entry_out_by}:
-                continue
-            deal_time_raw = getattr(deal, "time", 0) or 0
-            try:
-                deal_time = datetime.fromtimestamp(int(deal_time_raw))
-            except (TypeError, ValueError, OSError):
-                continue
-            if newest_close_time is None or deal_time > newest_close_time:
-                newest_close_time = deal_time
-
-        if newest_close_time is None:
-            return 0
-        elapsed = (now - newest_close_time).total_seconds()
-        remaining = int(max(0, seconds - elapsed))
-        return remaining
+        return self.strategy_service._recent_close_cooldown_remaining(strategy_name, broker_sym, sym_ia, tf)
 
     def _approved_feature_row(self, sym_ia: str, tf: str) -> dict:
-        return dict(self.approved_tp_sl.get((sym_ia.upper(), tf.upper()), {}))
+        return self.strategy_service._approved_feature_row(sym_ia, tf)
 
     def _strategy_prediction(self, strategy_name: str, pred: int) -> int:
-        """Aplica inversao de sinal no nivel da estrategia."""
-        if not bool(self._strategy_config(strategy_name).get("invert_signal", False)):
-            return pred
-        if pred == 1:
-            return 2
-        if pred == 2:
-            return 1
-        return pred
+        return self.strategy_service._strategy_prediction(strategy_name, pred)
 
     @staticmethod
     def _normalized_signal_symbol(symbol: str) -> str:
-        value = str(symbol or "").upper().strip()
-        if value == "XAUUSD":
-            return "GOLD"
-        return value
+        return normalized_signal_symbol(symbol)
 
     @staticmethod
     def _opposite_prediction(pred: int) -> int:
-        if pred == 1:
-            return 2
-        if pred == 2:
-            return 1
-        return pred
+        return opposite_prediction(pred)
 
     @staticmethod
     def _truthy_config_value(value) -> bool:
-        if isinstance(value, bool):
-            return value
-        if value is None:
-            return False
-        return str(value).strip().lower() not in {"0", "false", "no", "nao", "nÃ£o", "off", "disabled"}
+        return truthy_config_value(value)
 
     def _runtime_section(self, name: str) -> dict:
         try:
@@ -1441,13 +625,7 @@ class FusionV2:
 
     @staticmethod
     def _merge_policy_dicts(base: dict | None, override: dict | None) -> dict:
-        result = dict(base or {})
-        for key, value in (override or {}).items():
-            if isinstance(value, dict) and isinstance(result.get(key), dict):
-                result[key] = FusionV2._merge_policy_dicts(result.get(key), value)
-            else:
-                result[key] = value
-        return result
+        return merge_policy_dicts(base, override)
 
     def _symbol_timeframe_policy(self, symbol: str | None, timeframe: str | None) -> dict:
         policies = self._runtime_section("symbol_timeframe_policies")
@@ -1499,59 +677,7 @@ class FusionV2:
         return True, "runtime_symbol_allowed"
 
     def _apply_runtime_signal_thresholds(self, pred: int, p_buy: float, p_sell: float, symbol: str, timeframe: str):
-        cfg = self._runtime_section("signals")
-        if not cfg:
-            return pred, p_buy, p_sell, ""
-        try:
-            buy_threshold = float(cfg.get("buy_threshold", getattr(self.config.signal, "buy_threshold", 0.55)) or 0.55)
-            sell_threshold = float(cfg.get("sell_threshold", getattr(self.config.signal, "sell_threshold", 0.55)) or 0.55)
-            confidence_filter = float(cfg.get("confidence_filter", getattr(self.config.signal, "confidence_filter", 0.0)) or 0.0)
-            min_signal_strength = float(cfg.get("min_signal_strength", getattr(self.config.signal, "min_signal_strength", 0.0)) or 0.0)
-        except (TypeError, ValueError):
-            return pred, p_buy, p_sell, ""
-
-        policy = self._symbol_timeframe_policy(symbol, timeframe)
-        policy_signals = {}
-        if isinstance(policy, dict):
-            candidate = policy.get("signals", policy.get("thresholds", {}))
-            if isinstance(candidate, dict):
-                policy_signals = candidate
-        try:
-            buy_threshold = float(policy_signals.get("buy_threshold", buy_threshold) or buy_threshold)
-            sell_threshold = float(policy_signals.get("sell_threshold", sell_threshold) or sell_threshold)
-            confidence_filter = float(policy_signals.get("confidence_filter", confidence_filter) or confidence_filter)
-            min_signal_strength = float(policy_signals.get("min_signal_strength", min_signal_strength) or min_signal_strength)
-        except (TypeError, ValueError):
-            pass
-
-        p_buy = float(p_buy or 0.0)
-        p_sell = float(p_sell or 0.0)
-        edge = abs(p_buy - p_sell)
-        confidence = max(p_buy, p_sell)
-        original_pred = int(pred or 0)
-        if confidence < confidence_filter or edge < min_signal_strength:
-            new_pred = 0
-        elif p_buy >= buy_threshold and p_buy > p_sell:
-            new_pred = 1
-        elif p_sell >= sell_threshold and p_sell > p_buy:
-            new_pred = 2
-        else:
-            new_pred = 0
-
-        if new_pred == original_pred:
-            return pred, p_buy, p_sell, ""
-        old_side = "BUY" if original_pred == 1 else "SELL" if original_pred == 2 else "WAIT"
-        new_side = "BUY" if new_pred == 1 else "SELL" if new_pred == 2 else "WAIT"
-        reason = (
-            f"runtime_threshold:{old_side}->{new_side}:"
-            f"buy={buy_threshold:.2f}:sell={sell_threshold:.2f}:"
-            f"conf={confidence_filter:.2f}:edge={min_signal_strength:.2f}"
-        )
-        self.logger.info(
-            f"[RUNTIME_SIGNAL] {symbol} {timeframe} {old_side}->{new_side} | "
-            f"p_buy={p_buy:.4f} p_sell={p_sell:.4f} edge={edge:.4f}"
-        )
-        return new_pred, p_buy, p_sell, reason
+        return self.signal_filters.apply_runtime_signal_thresholds(pred, p_buy, p_sell, symbol, timeframe)
 
     def _runtime_tp_sl_points(self, symbol: str, tp_points: int, sl_points: int) -> tuple[int, int, str]:
         symbol_key = self._normalized_signal_symbol(symbol)
@@ -1572,267 +698,32 @@ class FusionV2:
                 reason_parts.append(f"runtime_symbol_tp_sl:{symbol_key}")
         return int(tp_points or 0), int(sl_points or 0), ";".join(reason_parts)
 
-    def _signal_group_inversion_reason(self, symbol: str, timeframe: str) -> str:
-        groups = getattr(self.config.signal, "inverted_signal_groups", []) or []
-        current_symbol = self._normalized_signal_symbol(symbol)
-        current_tf = str(timeframe or "").upper().strip()
-        for group in groups:
-            if not isinstance(group, dict):
-                continue
-            if not self._truthy_config_value(group.get("enabled", True)):
-                continue
-            group_symbol = self._normalized_signal_symbol(group.get("symbol", ""))
-            group_tf = str(group.get("timeframe", "")).upper().strip()
-            symbol_match = group_symbol in {"*", "ALL"} or group_symbol == current_symbol
-            timeframe_match = group_tf in {"*", "ALL"} or group_tf == current_tf
-            if symbol_match and timeframe_match:
-                return str(group.get("reason", "inverted_signal_group") or "inverted_signal_group")
-        return ""
-
     def _apply_signal_inversion(self, pred: int, p_buy: float, p_sell: float, symbol: str, timeframe: str):
-        if pred not in (1, 2):
-            return pred, p_buy, p_sell, ""
-
-        reason = ""
-        if bool(getattr(self.config.signal, "invert_signals", False)):
-            reason = "global_invert_signals"
-        else:
-            reason = self._signal_group_inversion_reason(symbol, timeframe)
-
-        if not reason:
-            return pred, p_buy, p_sell, ""
-
-        original_p_buy = float(p_buy or 0.0)
-        original_p_sell = float(p_sell or 0.0)
-        inverted_pred = self._opposite_prediction(pred)
-        inverted_p_buy = original_p_sell
-        inverted_p_sell = original_p_buy
-        original_side = "BUY" if pred == 1 else "SELL"
-        inverted_side = "BUY" if inverted_pred == 1 else "SELL"
-        self.logger.warning(
-            f"[SIGNAL_INVERSION] {symbol} {timeframe} {original_side}->{inverted_side} | "
-            f"motivo={reason} | p_buy={original_p_buy:.4f}->{inverted_p_buy:.4f} | "
-            f"p_sell={original_p_sell:.4f}->{inverted_p_sell:.4f}"
-        )
-        return inverted_pred, inverted_p_buy, inverted_p_sell, reason
-
-    def _signal_override_active(self, rule: dict) -> bool:
-        if not self._truthy_config_value(rule.get("enabled", True)):
-            return False
-        now = datetime.now()
-        valid_from = str(rule.get("valid_from", "") or "").strip()
-        valid_until = str(rule.get("valid_until", "") or "").strip()
-        try:
-            if valid_from and now < datetime.fromisoformat(valid_from[:19]):
-                return False
-        except ValueError:
-            pass
-        try:
-            if valid_until and now > datetime.fromisoformat(valid_until[:19]):
-                return False
-        except ValueError:
-            pass
-        return True
-
-    def _matching_signal_override(self, symbol: str, timeframe: str) -> dict:
-        cfg = self.config.get("signal_overrides", {}) or {}
-        if not bool(cfg.get("enabled", False)):
-            return {}
-        current_symbol = self._normalized_signal_symbol(symbol)
-        current_tf = str(timeframe or "").upper().strip()
-        for rule in cfg.get("rules", []) or []:
-            if not isinstance(rule, dict) or not self._signal_override_active(rule):
-                continue
-            rule_symbol = self._normalized_signal_symbol(rule.get("symbol", ""))
-            rule_tf = str(rule.get("timeframe", "")).upper().strip()
-            symbol_match = rule_symbol in {"*", "ALL"} or rule_symbol == current_symbol
-            timeframe_match = rule_tf in {"*", "ALL"} or rule_tf == current_tf
-            if symbol_match and timeframe_match:
-                return rule
-        return {}
+        return self.signal_filters.apply_signal_inversion(pred, p_buy, p_sell, symbol, timeframe)
 
     def _apply_signal_override(self, pred: int, p_buy: float, p_sell: float, symbol: str, timeframe: str):
-        rule = self._matching_signal_override(symbol, timeframe)
-        if not rule:
-            return pred, p_buy, p_sell, ""
-
-        action = str(rule.get("action", "") or "").lower().strip()
-        reason = str(rule.get("reason", action or "signal_override") or "signal_override")
-        original_pred = int(pred or 0)
-        original_p_buy = float(p_buy or 0.0)
-        original_p_sell = float(p_sell or 0.0)
-        new_pred = original_pred
-        new_p_buy = original_p_buy
-        new_p_sell = original_p_sell
-
-        if action in {"force_wait", "wait", "neutral", "neutro"}:
-            new_pred = 0
-        elif action == "block_buy" and original_pred == 1:
-            new_pred = 0
-        elif action == "block_sell" and original_pred == 2:
-            new_pred = 0
-        elif action == "force_buy":
-            confidence = float(rule.get("confidence", max(original_p_buy, original_p_sell, 0.60)) or 0.60)
-            new_pred = 1
-            new_p_buy = max(original_p_buy, confidence)
-            new_p_sell = min(original_p_sell, 1.0 - min(new_p_buy, 1.0))
-        elif action == "force_sell":
-            confidence = float(rule.get("confidence", max(original_p_buy, original_p_sell, 0.60)) or 0.60)
-            new_pred = 2
-            new_p_sell = max(original_p_sell, confidence)
-            new_p_buy = min(original_p_buy, 1.0 - min(new_p_sell, 1.0))
-        elif action == "invert" and original_pred in (1, 2):
-            new_pred = self._opposite_prediction(original_pred)
-            new_p_buy = original_p_sell
-            new_p_sell = original_p_buy
-        elif action == "reduce_confidence" and original_pred in (1, 2):
-            factor = max(0.0, min(1.0, float(rule.get("factor", 0.50) or 0.50)))
-            if original_pred == 1:
-                new_p_buy = original_p_buy * factor
-            else:
-                new_p_sell = original_p_sell * factor
-            new_pred = 0
-        else:
-            return pred, p_buy, p_sell, ""
-
-        if new_pred == original_pred and new_p_buy == original_p_buy and new_p_sell == original_p_sell:
-            return pred, p_buy, p_sell, ""
-
-        original_side = "BUY" if original_pred == 1 else "SELL" if original_pred == 2 else "WAIT"
-        new_side = "BUY" if new_pred == 1 else "SELL" if new_pred == 2 else "WAIT"
-        self.logger.warning(
-            f"[SIGNAL_OVERRIDE] {symbol} {timeframe} {original_side}->{new_side} | "
-            f"action={action} motivo={reason} | p_buy={original_p_buy:.4f}->{new_p_buy:.4f} | "
-            f"p_sell={original_p_sell:.4f}->{new_p_sell:.4f}"
-        )
-        return new_pred, new_p_buy, new_p_sell, f"{action}:{reason}"
+        return self.signal_filters.apply_signal_override(pred, p_buy, p_sell, symbol, timeframe)
 
     def _strategy_max_positions(self, strategy_name: str) -> int:
-        cfg = self._strategy_config(strategy_name)
-        runtime_value = self.runtime_control.get("trading.max_positions_per_symbol")
-        if runtime_value is not None:
-            try:
-                return max(int(runtime_value), 0)
-            except (TypeError, ValueError):
-                pass
-        if bool(self.config.get("trading.position_limits.enabled", True)):
-            return int(self.config.get("trading.position_limits.max_per_symbol", cfg.get("max_positions_per_symbol", 1)))
-        return int(cfg.get("max_positions_per_symbol", cfg.get("max_positions_per_side", 1)))
+        return self.strategy_service._strategy_max_positions(strategy_name)
 
     def _position_limit_scope(self, strategy_name: str) -> str:
-        cfg = self._strategy_config(strategy_name)
-        if bool(self.config.get("trading.position_limits.enabled", True)):
-            return str(self.config.get("trading.position_limits.scope", cfg.get("max_positions_scope", "strategy"))).lower()
-        return str(cfg.get("max_positions_scope", "strategy")).lower()
+        return self.strategy_service._position_limit_scope(strategy_name)
 
     def _position_limit_any_direction(self, strategy_name: str) -> bool:
-        cfg = self._strategy_config(strategy_name)
-        if bool(self.config.get("trading.position_limits.enabled", True)):
-            mode = self.config.get("trading.position_limits.mode", cfg.get("max_positions_mode", "any_direction"))
-        else:
-            mode = cfg.get("max_positions_mode", "any_direction")
-        return str(mode).lower() == "any_direction"
-
-    def _load_strategy_features(self) -> pd.DataFrame:
-        path_value = self.config.get("strategies.strategy2.features_path", "./features/features_backteste_dinamica.csv")
-        path = Path(path_value)
-        if not path.is_absolute():
-            path = Path.cwd() / path
-        self.logger.info(f"[BOOT][strategy_features] {datetime.now().isoformat(timespec='seconds')} | caminho={path}")
-        if not path.exists():
-            self.logger.warning(f"[BOOT][strategy_features] {datetime.now().isoformat(timespec='seconds')} | arquivo ausente")
-            return pd.DataFrame()
-        try:
-            df = pd.read_csv(path)
-            self.logger.info(f"[BOOT][strategy_features] {datetime.now().isoformat(timespec='seconds')} | carregado rows={len(df)} cols={len(df.columns)}")
-            for col in ["symbol", "timeframe"]:
-                if col in df.columns:
-                    df[col] = df[col].astype(str).str.upper()
-            for col in ["direcao", "entrada_posicao", "nivel_candle_anterior", "candle_anterior"]:
-                if col in df.columns:
-                    df[col] = df[col].astype(str).str.lower()
-            return df
-        except Exception as e:
-            self.logger.warning(f"Nao foi possivel carregar features da strategy2: {e}")
-            return pd.DataFrame()
-
-    def _recent_candle_context(self, symbol: str, tf: str) -> dict:
-        df = self._get_rates_frame(symbol, tf, 3, start_pos=0, min_rows=2)
-        if df.empty or len(df) < 2:
-            return {}
-        df = df.copy()
-        current = df.iloc[-1]
-        previous = df.iloc[-2]
-        if previous["close"] > previous["open"]:
-            candle_type = "alta"
-        elif previous["close"] < previous["open"]:
-            candle_type = "baixa"
-        else:
-            candle_type = "doji"
-        return {"current": current, "previous": previous, "candle_type": candle_type}
+        return self.strategy_service._position_limit_any_direction(strategy_name)
 
     def _strategy_feature_candidate(self, strategy_name: str, sym_ia: str, tf: str, pred: int, broker_sym: str) -> dict:
-        if self.strategy_features.empty:
-            return {}
-        ctx = self._recent_candle_context(broker_sym, tf)
-        if not ctx:
-            return {}
-
-        direcao = "compra" if pred == 1 else "venda"
-        entrada_posicao = "acima" if pred == 1 else "abaixo"
-        current = ctx["current"]
-        previous = ctx["previous"]
-        levels = {
-            "maxima": float(previous["high"]),
-            "minima": float(previous["low"]),
-            "abertura": float(previous["open"]),
-            "fechamento": float(previous["close"]),
-        }
-        if pred == 1:
-            triggered_levels = [name for name, value in levels.items() if float(current["high"]) >= value]
-        else:
-            triggered_levels = [name for name, value in levels.items() if float(current["low"]) <= value]
-        if not triggered_levels:
-            return {}
-
-        cfg = self._strategy_config(strategy_name)
-        df = self.strategy_features
-        mask = (
-            (df["symbol"] == sym_ia.upper()) &
-            (df["timeframe"] == tf.upper()) &
-            (df["direcao"] == direcao) &
-            (df["entrada_posicao"] == entrada_posicao) &
-            (df["candle_anterior"] == ctx["candle_type"]) &
-            (df["nivel_candle_anterior"].isin(triggered_levels))
-        )
-        candidates = df.loc[mask].copy()
-        if candidates.empty:
-            return {}
-
-        candidates = candidates[candidates["entradas"] >= int(cfg.get("min_entries", 100))]
-        candidates = candidates[candidates["win_rate"] >= float(cfg.get("min_win_rate", 0.0))]
-        if "score" in candidates.columns:
-            candidates = candidates[candidates["score"] >= float(cfg.get("min_score", -999999.0))]
-        if candidates.empty:
-            return {}
-
-        preferred_target = int(cfg.get("target_preference", 500))
-        target_candidates = candidates[candidates["target"] == preferred_target]
-        if not target_candidates.empty:
-            candidates = target_candidates
-        sort_cols = [col for col in ["score", "win_rate", "entradas"] if col in candidates.columns]
-        if sort_cols:
-            candidates = candidates.sort_values(sort_cols, ascending=[False] * len(sort_cols))
-        return candidates.iloc[0].to_dict()
+        return self.strategy_features.get_feature_candidate(strategy_name, sym_ia, tf, pred, broker_sym)
 
     def _strategy2_feature_candidate(self, sym_ia: str, tf: str, pred: int, broker_sym: str) -> dict:
-        return self._strategy_feature_candidate("strategy2", sym_ia, tf, pred, broker_sym)
+        return self.strategy_features.get_strategy2_candidate(sym_ia, tf, pred, broker_sym)
 
     def _is_gold_symbol(self, sym_ia: str) -> bool:
-        return sym_ia.upper() in ["XAUUSD", "GOLD"]
+        return self.strategy_service._is_gold_symbol(sym_ia)
 
     def _strategy4_ema_alignment_ok(self, broker_sym: str, tf: str) -> bool:
-        return self._strategy_ema_alignment_ok("strategy4", 1, broker_sym, "GOLD", tf)
+        return self.strategy_service._strategy4_ema_alignment_ok(broker_sym, tf)
 
     def _symbol_point_value(self, broker_sym: str, sym_ia: str) -> float:
         overrides = self.config.get("data.point_values", {}) or {}
@@ -1858,142 +749,7 @@ class FusionV2:
         return tick_size if tick_size > 0 else 0.0
 
     def _strategy_ema_alignment_ok(self, strategy_name: str, pred: int, broker_sym: str, sym_ia: str, tf: str) -> bool:
-        cfg = self._runtime_filter_config("ema_alignment", self.config.get("entry_filters.ema_alignment", {}) or {}, sym_ia, tf)
-        if not bool(cfg.get("enabled", True)):
-            return True
-        mode = str(cfg.get("mode", "block") or "block").lower()
-        if mode == "shadow":
-            return True
-        periods = list(cfg.get("periods", [9, 21, 50]) or [9, 21, 50])
-        if len(periods) != 3:
-            periods = [9, 21, 50]
-        fast, mid, slow = [int(period) for period in periods]
-        if mt5 is None:
-            self.logger.info(f"{strategy_name.upper()} {sym_ia} {tf} bloqueada: MT5 indisponivel para filtro EMA")
-            return False
-        tf_code = {
-            "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "M30": mt5.TIMEFRAME_M30,
-            "H1": mt5.TIMEFRAME_H1, "H4": mt5.TIMEFRAME_H4, "D1": mt5.TIMEFRAME_D1
-        }.get(tf)
-        if not tf_code:
-            self.logger.info(f"{strategy_name.upper()} {sym_ia} {tf} bloqueada: MT5/timeframe indisponivel para filtro EMA")
-            return False
-        if not bool(cfg.get("require_signal_timeframe_alignment", True)):
-            self.logger.warning(
-                "entry_filters.ema_alignment.require_signal_timeframe_alignment=false ignorado; "
-                "o timeframe da ordem sempre precisa estar alinhado."
-            )
-        bars = max(slow + 10, int(cfg.get("bars", 80)))
-        slope_cfg = cfg.get("slope_filter", {}) or {}
-        if bool(slope_cfg.get("enabled", False)):
-            bars = max(bars, slow + max(1, int(slope_cfg.get("lookback_bars", 5) or 5)) + 5)
-        start_pos = 1 if bool(cfg.get("use_closed_candle", True)) else 0
-        rates_df = self._get_rates_frame(broker_sym, tf, bars, start_pos=start_pos, min_rows=slow + 5)
-        if rates_df.empty or len(rates_df) < slow + 5:
-            self.logger.info(f"{strategy_name.upper()} {sym_ia} {tf} bloqueada: dados insuficientes para filtro EMA")
-            return False
-        df = rates_df.copy()
-        close = df["close"].astype(float)
-        ema_fast_series = close.ewm(span=fast, adjust=False).mean()
-        ema_mid_series = close.ewm(span=mid, adjust=False).mean()
-        ema_slow_series = close.ewm(span=slow, adjust=False).mean()
-        ema_fast = ema_fast_series.iloc[-1]
-        ema_mid = ema_mid_series.iloc[-1]
-        ema_slow = ema_slow_series.iloc[-1]
-        point_value = self._symbol_point_value(broker_sym, sym_ia)
-        if point_value <= 0:
-            self.logger.info(f"{strategy_name.upper()} {sym_ia} {tf} bloqueada: point_value indisponivel para filtro EMA")
-            return False
-        distance_cfg = cfg.get("min_distance_points", {}) or {}
-        default_dist = distance_cfg.get("default", {}) or {}
-        timeframe_dist = (distance_cfg.get("by_timeframe", {}) or {}).get(tf, {}) or {}
-        min_fast_mid = float(timeframe_dist.get("ema9_ema21", default_dist.get("ema9_ema21", 0)) or 0)
-        min_mid_slow = float(timeframe_dist.get("ema21_ema50", default_dist.get("ema21_ema50", 0)) or 0)
-        if pred == 1:
-            aligned = ema_fast > ema_mid > ema_slow
-            direction = "BUY"
-            rule = f"EMA{fast} > EMA{mid} > EMA{slow}"
-            fast_mid_points = (ema_fast - ema_mid) / point_value
-            mid_slow_points = (ema_mid - ema_slow) / point_value
-        elif pred == 2:
-            aligned = ema_fast < ema_mid < ema_slow
-            direction = "SELL"
-            rule = f"EMA{fast} < EMA{mid} < EMA{slow}"
-            fast_mid_points = (ema_mid - ema_fast) / point_value
-            mid_slow_points = (ema_slow - ema_mid) / point_value
-        else:
-            return False
-        if not aligned:
-            self.logger.info(
-                f"{strategy_name.upper()} {sym_ia} {tf} {direction} bloqueada por medias: "
-                f"EMA{fast}={ema_fast:.5f} EMA{mid}={ema_mid:.5f} EMA{slow}={ema_slow:.5f} | regra {rule}"
-            )
-            return False
-        if fast_mid_points < min_fast_mid or mid_slow_points < min_mid_slow:
-            self.logger.info(
-                f"{strategy_name.upper()} {sym_ia} {tf} {direction} bloqueada por distancia entre medias: "
-                f"EMA{fast}-EMA{mid}={fast_mid_points:.1f}p min={min_fast_mid:.1f}p | "
-                f"EMA{mid}-EMA{slow}={mid_slow_points:.1f}p min={min_mid_slow:.1f}p | "
-                f"point_value={point_value:g}"
-            )
-            return False
-        if bool(slope_cfg.get("enabled", False)):
-            lookback = max(1, int(slope_cfg.get("lookback_bars", 5) or 5))
-            if len(ema_slow_series) <= lookback:
-                self.logger.info(f"{strategy_name.upper()} {sym_ia} {tf} {direction} bloqueada: dados insuficientes para inclinacao das EMAs")
-                return False
-            min_cfg = slope_cfg.get("min_slope_points", {}) or {}
-            default_slope = min_cfg.get("default", {}) or {}
-            timeframe_slope = (min_cfg.get("by_timeframe", {}) or {}).get(tf, {}) or {}
-            min_fast_slope = float(timeframe_slope.get(f"ema{fast}", default_slope.get(f"ema{fast}", 0)) or 0)
-            min_mid_slope = float(timeframe_slope.get(f"ema{mid}", default_slope.get(f"ema{mid}", 0)) or 0)
-            min_slow_slope = float(timeframe_slope.get(f"ema{slow}", default_slope.get(f"ema{slow}", 0)) or 0)
-            fast_slope_points = (ema_fast_series.iloc[-1] - ema_fast_series.iloc[-1 - lookback]) / point_value
-            mid_slope_points = (ema_mid_series.iloc[-1] - ema_mid_series.iloc[-1 - lookback]) / point_value
-            slow_slope_points = (ema_slow_series.iloc[-1] - ema_slow_series.iloc[-1 - lookback]) / point_value
-            if pred == 2:
-                fast_slope_points *= -1
-                mid_slope_points *= -1
-                slow_slope_points *= -1
-            if (
-                fast_slope_points < min_fast_slope
-                or mid_slope_points < min_mid_slope
-                or slow_slope_points < min_slow_slope
-            ):
-                self.logger.info(
-                    f"{strategy_name.upper()} {sym_ia} {tf} {direction} bloqueada por inclinacao das EMAs: "
-                    f"EMA{fast}={fast_slope_points:.1f}p min={min_fast_slope:.1f}p | "
-                    f"EMA{mid}={mid_slope_points:.1f}p min={min_mid_slope:.1f}p | "
-                    f"EMA{slow}={slow_slope_points:.1f}p min={min_slow_slope:.1f}p | "
-                    f"lookback={lookback} candles"
-                )
-                return False
-        if not self._ema_lower_timeframes_direction_ok(
-            strategy_name=strategy_name,
-            pred=pred,
-            broker_sym=broker_sym,
-            sym_ia=sym_ia,
-            signal_tf=tf,
-            direction=direction,
-            periods=[fast, mid, slow],
-            start_pos=start_pos,
-        ):
-            return False
-        if bool(cfg.get("log_passed_filter", False)):
-            candle_ref = "fechado" if start_pos == 1 else "atual"
-            slope_text = ""
-            if bool(slope_cfg.get("enabled", False)) and "fast_slope_points" in locals():
-                slope_text = (
-                    f" | slope EMA{fast}/{mid}/{slow}="
-                    f"{fast_slope_points:.1f}p/{mid_slope_points:.1f}p/{slow_slope_points:.1f}p"
-                )
-            self.logger.info(
-                f"{strategy_name.upper()} {sym_ia} {tf} {direction} filtro EMA OK ({candle_ref}): "
-                f"EMA{fast}={ema_fast:.5f} EMA{mid}={ema_mid:.5f} EMA{slow}={ema_slow:.5f} | "
-                f"dist {fast_mid_points:.1f}p/{mid_slow_points:.1f}p min {min_fast_mid:.1f}p/{min_mid_slow:.1f}p"
-                f"{slope_text} | point_value={point_value:g}"
-            )
-        return True
+        return self.strategy_service._strategy_ema_alignment_ok(strategy_name, pred, broker_sym, sym_ia, tf)
 
     def _ema_lower_timeframes_direction_ok(
         self,
@@ -2006,194 +762,22 @@ class FusionV2:
         periods: list[int],
         start_pos: int,
     ) -> bool:
-        cfg = self._runtime_filter_config(
-            "ema_lower_timeframes_direction",
-            self.config.get("entry_filters.ema_alignment.lower_timeframe_direction", {}) or {},
-            sym_ia,
-            signal_tf,
+        return self.ema_alignment.ema_lower_timeframes_direction_ok(
+            strategy_name=strategy_name,
+            pred=pred,
+            broker_sym=broker_sym,
+            sym_ia=sym_ia,
+            signal_tf=signal_tf,
+            direction=direction,
+            periods=periods,
+            start_pos=start_pos,
         )
-        if not bool(cfg.get("enabled", False)):
-            return True
-        mode = str(cfg.get("mode", "block") or "block").lower()
-        if mode == "shadow":
-            return True
-        if mt5 is None:
-            self.logger.info(f"{strategy_name.upper()} {sym_ia} bloqueada: MT5 indisponivel para filtro M5/M15")
-            return False
-
-        tf_codes = {
-            "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "M30": mt5.TIMEFRAME_M30,
-            "H1": mt5.TIMEFRAME_H1, "H4": mt5.TIMEFRAME_H4, "D1": mt5.TIMEFRAME_D1
-        }
-        required_tfs = [str(item).upper() for item in (cfg.get("timeframes", ["M5", "M15"]) or ["M5", "M15"])]
-        lookback = max(1, int(cfg.get("lookback_bars", 5) or 5))
-        require_all = bool(cfg.get("require_all_periods", True))
-        bars = max(max(periods) + lookback + 5, 80)
-
-        for lower_tf in required_tfs:
-            tf_code = tf_codes.get(lower_tf)
-            if not tf_code:
-                self.logger.info(f"{strategy_name.upper()} {sym_ia} bloqueada: timeframe {lower_tf} indisponivel para filtro M5/M15")
-                return False
-            rates_df = self._get_rates_frame(broker_sym, lower_tf, bars, start_pos=start_pos, min_rows=max(periods) + lookback + 1)
-            if rates_df.empty or len(rates_df) <= max(periods) + lookback:
-                self.logger.info(f"{strategy_name.upper()} {sym_ia} {lower_tf} bloqueada: dados insuficientes para direcao M5/M15")
-                return False
-
-            df = rates_df.copy()
-            close = df["close"].astype(float)
-            slopes = {}
-            passed = []
-            for period in periods:
-                ema = close.ewm(span=period, adjust=False).mean()
-                slope = float(ema.iloc[-1] - ema.iloc[-1 - lookback])
-                slopes[period] = slope
-                passed.append(slope > 0 if pred == 1 else slope < 0)
-
-            ok = all(passed) if require_all else any(passed)
-            if not ok:
-                slope_text = " ".join(f"EMA{period}={slopes[period]:.5f}" for period in periods)
-                expected = "subindo" if pred == 1 else "descendo"
-                self.logger.info(
-                    f"{strategy_name.upper()} {sym_ia} {lower_tf} {direction} bloqueada por direcao M5/M15: "
-                    f"esperado medias {expected} | {slope_text} | lookback={lookback}"
-                )
-                return False
-
-        return True
 
     def _strategy_candle_price_confirmation_ok(self, strategy_name: str, pred: int, broker_sym: str, sym_ia: str, tf: str) -> bool:
-        cfg = self._runtime_filter_config(
-            "candle_price_confirmation",
-            self.config.get("entry_filters.candle_price_confirmation", {}) or {},
-            sym_ia,
-            tf,
-        )
-        if not bool(cfg.get("enabled", True)):
-            return True
-        mode = str(cfg.get("mode", "block") or "block").lower()
-        if mode == "shadow":
-            return True
-        if mt5 is None:
-            self.logger.info(f"{strategy_name.upper()} {sym_ia} {tf} bloqueada: MT5 indisponivel para filtro de preco/candle")
-            return False
-        bars = max(3, int(cfg.get("bars", 3) or 3))
-        df = self._get_rates_frame(broker_sym, tf, bars, start_pos=0, min_rows=2)
-        tick = mt5.symbol_info_tick(broker_sym)
-        if df.empty or len(df) < 2 or tick is None:
-            self.logger.info(f"{strategy_name.upper()} {sym_ia} {tf} bloqueada: dados insuficientes para filtro de preco/candle")
-            return False
-        df = df.copy()
-        current = df.iloc[-1]
-        previous = df.iloc[-2]
-        current_open = float(current["open"])
-        previous_open = float(previous["open"])
-        previous_close = float(previous["close"])
-
-        previous_type = "doji"
-        if previous_close > previous_open:
-            previous_type = "alta"
-        elif previous_close < previous_open:
-            previous_type = "baixa"
-
-        use_bid_ask = bool(cfg.get("use_bid_ask", True))
-        if pred == 1:
-            price = float(tick.ask if use_bid_ask else tick.last or tick.ask)
-            direction = "BUY"
-            checks = [
-                (price > current_open, f"preco {price:.5f} > abertura atual {current_open:.5f}"),
-                (previous_type == "alta", f"candle anterior precisa ser alta, atual={previous_type}"),
-            ]
-        elif pred == 2:
-            price = float(tick.bid if use_bid_ask else tick.last or tick.bid)
-            direction = "SELL"
-            checks = [
-                (price < current_open, f"preco {price:.5f} < abertura atual {current_open:.5f}"),
-                (previous_type == "baixa", f"candle anterior precisa ser baixa, atual={previous_type}"),
-            ]
-        else:
-            return False
-
-        failed = [label for passed, label in checks if not passed]
-        if failed:
-            self.logger.info(
-                f"{strategy_name.upper()} {sym_ia} {tf} {direction} bloqueada por preco/candle: "
-                f"candle_anterior={previous_type} | " + " | ".join(failed)
-            )
-            return False
-
-        if bool(cfg.get("log_passed_filter", False)):
-            self.logger.info(
-                f"{strategy_name.upper()} {sym_ia} {tf} {direction} filtro preco/candle OK: "
-                f"preco={price:.5f} abertura_atual={current_open:.5f} "
-                f"candle_anterior={previous_type} abertura_anterior={previous_open:.5f} fechamento_anterior={previous_close:.5f}"
-            )
-        return True
+        return self.strategy_service._strategy_candle_price_confirmation_ok(strategy_name, pred, broker_sym, sym_ia, tf)
 
     def _strategy4_insidebar_buy_allowed(self, broker_sym: str, sym_ia: str, tf: str) -> bool:
-        self._last_strategy4_setup_reason = ""
-        self._last_strategy4_setup_details = {}
-        tf_code = {
-            "M5": mt5.TIMEFRAME_M5, "M15": mt5.TIMEFRAME_M15, "M30": mt5.TIMEFRAME_M30,
-            "H1": mt5.TIMEFRAME_H1, "H4": mt5.TIMEFRAME_H4, "D1": mt5.TIMEFRAME_D1
-        }.get(tf)
-        if not tf_code:
-            self._last_strategy4_setup_reason = "setup_block:timeframe_invalido"
-            return False
-
-        rates_df = self._get_rates_frame(broker_sym, tf, 2, start_pos=1, min_rows=2)
-        if rates_df.empty or len(rates_df) < 2:
-            self._last_strategy4_setup_reason = "setup_block:sem_rates"
-            return False
-
-        df = rates_df.copy()
-        mother = df.iloc[-2]
-        inside = df.iloc[-1]
-        tick = mt5.symbol_info_tick(broker_sym)
-        if not tick:
-            self._last_strategy4_setup_reason = "setup_block:sem_tick"
-            return False
-
-        cfg = self._strategy_config("strategy4")
-        log_key = (sym_ia, tf, mother["time"])
-        if bool(cfg.get("log_setup_details", False)) and self.gold_penultimate_log.get((sym_ia, tf)) != log_key:
-            self.gold_penultimate_log[(sym_ia, tf)] = log_key
-            self.logger.info(
-                f"S4 GOLD {tf} candle mae registrado | "
-                f"time={mother['time']} max={float(mother['high']):.2f} min={float(mother['low']):.2f} | "
-                f"inside_time={inside['time']} inside_max={float(inside['high']):.2f} inside_min={float(inside['low']):.2f}"
-            )
-
-        is_inside = float(inside["high"]) < float(mother["high"]) and float(inside["low"]) > float(mother["low"])
-        price_above_mother_high = float(tick.ask) >= float(mother["high"])
-        self._last_strategy4_setup_details = {
-            "mother_time": str(mother["time"]),
-            "mother_high": float(mother["high"]),
-            "mother_low": float(mother["low"]),
-            "inside_time": str(inside["time"]),
-            "inside_high": float(inside["high"]),
-            "inside_low": float(inside["low"]),
-            "ask": float(tick.ask),
-            "is_inside": bool(is_inside),
-            "price_above_mother_high": bool(price_above_mother_high),
-        }
-        if not is_inside:
-            self._last_strategy4_setup_reason = "setup_block:insidebar_false"
-            self.logger.info(
-                f"S4 GOLD {tf} setup_block: insidebar=false | "
-                f"mae_max={float(mother['high']):.2f} mae_min={float(mother['low']):.2f} "
-                f"ultimo_max={float(inside['high']):.2f} ultimo_min={float(inside['low']):.2f}"
-            )
-            return False
-        if not price_above_mother_high:
-            self._last_strategy4_setup_reason = "setup_block:aguardando_rompimento_mae"
-            self.logger.info(
-                f"S4 GOLD {tf} setup_block: aguardando rompimento da maxima da mae | "
-                f"ask={float(tick.ask):.2f} max_mae={float(mother['high']):.2f}"
-            )
-            return False
-        self._last_strategy4_setup_reason = "setup_ok"
-        return True
+        return self.strategy_service._strategy4_insidebar_buy_allowed(broker_sym, sym_ia, tf)
 
     def _broker_symbol_to_base(self, broker_symbol: str) -> str:
         return self.sync_dict.get(broker_symbol, broker_symbol).upper()
@@ -2232,18 +816,340 @@ class FusionV2:
             )
         )
 
+    def _emit_gate_decision(
+        self,
+        strategy_name: str,
+        sym_ia: str,
+        tf: str,
+        gate_name: str,
+        passed: bool,
+        reason: str = "",
+    ) -> None:
+        status = "PASS" if passed else "BLOCK"
+        reason_text = str(reason or "ok").strip() or "ok"
+        self.logger.info(
+            f"[GATE] {status} {strategy_name.upper()} {sym_ia} {tf} gate={gate_name} reason={reason_text}"
+        )
+
+    def _run_gate_check(
+        self,
+        strategy_name: str,
+        pred: int,
+        broker_sym: str,
+        sym_ia: str,
+        tf: str,
+        gate_name: str,
+        check_fn,
+    ) -> bool:
+        passed = bool(check_fn())
+        reason = self._last_execution_block_reason if not passed else "ok"
+        self._emit_gate_decision(strategy_name, sym_ia, tf, gate_name, passed, reason)
+        return passed
+
     @staticmethod
     def _engine_state_should_block(cfg: dict, output: EngineOutput) -> bool:
+        """Decide se o estado do engine deve bloquear uma ordem.
+
+        Comportamento padrão alterado para só considerar fatores negativos como bloqueadores
+        quando o prejuízo flutuante em dólares for maior ou igual ao limite configurado
+        (`max_floating_loss_money` em `cfg`). Isso atende à regra: não bloquear por muitas
+        posições negativas/demais fatores a menos que drawdown (em $) exceda o limiar.
+        """
         states = cfg.get("block_states", []) or []
-        if not states:
-            return bool(output.negative_factors)
-        normalized = {str(item).strip().lower() for item in states if str(item).strip()}
-        return str(output.state or "").strip().lower() in normalized
+        # se o usuário especificou estados explícitos, respeitamos isso, porém
+        # não devemos bloquear apenas por contagem de posicoes negativas ('muitas_posicoes',
+        # 'muitas_posicoes_negativas') quando o prejuizo flutuante em $ for menor que o limite.
+        if states:
+            normalized = {str(item).strip().lower() for item in states if str(item).strip()}
+            state_in = str(output.state or "").strip().lower() in normalized
+            if not state_in:
+                return False
+            # se estiver no conjunto de estados bloqueadores, checar excecoes por fatores
+            try:
+                money_limit = float(cfg.get("max_floating_loss_money", 70.0) or 70.0)
+            except Exception:
+                money_limit = 70.0
+            floating_profit = float((output.features or {}).get("floating_profit", 0.0) or 0.0)
+            floating_loss = max(0.0, -floating_profit)
+            if floating_loss < money_limit:
+                # filtrar fatores que nao devem bloquear
+                neg = [str(item or "") for item in (output.negative_factors or [])]
+                filtered = [f for f in neg if not (f.startswith("muitas_posicoes") or f.startswith("muitas_posicoes_negativas"))]
+                # se apos filtrar nao houver fatores negativos remanescentes, nao bloqueia
+                if not filtered:
+                    return False
+            return True
+
+        # sem estados explicitados: por compatibilidade antiga, normalmente bloqueia se houver fatores negativos
+        # mas agora só bloquearemos por fatores negativos se o prejuízo flutuante em $ >= limite config (default $70)
+        try:
+            money_limit = float(cfg.get("max_floating_loss_money", 70.0) or 70.0)
+        except Exception:
+            money_limit = 70.0
+        floating_profit = float((output.features or {}).get("floating_profit", 0.0) or 0.0)
+        floating_loss = max(0.0, -floating_profit)
+        if floating_loss < money_limit:
+            return False
+        return bool(output.negative_factors)
+
+    @staticmethod
+    def _should_relax_filter_for_daytrade(cfg: dict | None, filter_name: str, timeframe: str | None = None, p_buy: float = 0.0, p_sell: float = 0.0) -> bool:
+        if not cfg:
+            return False
+        if not bool(cfg.get("enabled", False)):
+            return False
+        timeframe = str(timeframe or "").upper()
+        if timeframe not in {str(item).upper() for item in (cfg.get("timeframes", []) or [])}:
+            return False
+        if filter_name not in {str(item).strip() for item in (cfg.get("relax_filters", []) or [])}:
+            return False
+        try:
+            edge = float(p_buy or 0.0) - float(p_sell or 0.0)
+        except (TypeError, ValueError):
+            edge = 0.0
+        min_edge = float(cfg.get("strong_signal_edge", 0.12) or 0.12)
+        return edge > min_edge + 1e-9
+
+    def _historical_price_acceptance_check(self, strategy_name: str, pred: int, broker_sym: str, sym_ia: str, tf: str, p_buy: float = 0.0, p_sell: float = 0.0) -> bool:
+        cfg = self._runtime_filter_config(
+            "historical_price_acceptance",
+            (getattr(self, "config", {}) or {}).get("entry_filters", {}).get("historical_price_acceptance", {}) or {},
+            sym_ia,
+            tf,
+        )
+        if not bool(cfg.get("enabled", True)):
+            return True
+        mode = str(cfg.get("mode", "block") or "block").lower()
+        if mode == "shadow":
+            return True
+
+        symbol_for_check = self._normalized_signal_symbol(sym_ia) or str(sym_ia or broker_sym or "").upper()
+        if not symbol_for_check:
+            return True
+
+        provider = getattr(self, "historical_market_provider", None)
+        if provider is None:
+            return True
+        total = provider.bar_count(symbol_for_check, tf)
+        if total <= 0:
+            return True
+        index = max(0, total - 1)
+        result = self.historical_acceptance_engine.evaluate(symbol_for_check, tf, index, lookback=int(cfg.get("lookback_bars", 80) or 80))
+
+        self._record_engine_output(
+            engine="historical_price_acceptance",
+            direction=self._prediction_side(pred),
+            score=1.0 if result.status == "accepted" else 0.7 if result.status == "needs_validation" else 0.2,
+            confidence=0.85 if result.status == "accepted" else 0.55 if result.status == "needs_validation" else 0.95,
+            state="ok" if result.status == "accepted" else "needs_validation" if result.status == "needs_validation" else "blocked",
+            positive_factors=["historical_price_in_domain"] if result.status == "accepted" else [],
+            negative_factors=result.reasons if result.status == "rejected" else (["historical_price_needs_validation"] if result.status == "needs_validation" else []),
+            warnings=[] if result.status == "accepted" else [result.status],
+            features={
+                "symbol": symbol_for_check,
+                "timeframe": tf,
+                "status": result.status,
+                "current_price": result.current_price,
+                "price_domain_low": result.price_domain_low,
+                "price_domain_high": result.price_domain_high,
+                "reasons": result.reasons,
+            },
+        )
+
+        if result.status == "rejected":
+            self._last_execution_block_reason = ";".join(result.reasons) or "historical_price_out_of_domain"
+            return False
+        if result.status == "needs_validation":
+            self._last_execution_block_reason = "historical_price_needs_validation"
+            if str(cfg.get("strict_mode", "soft") or "soft").lower() == "block":
+                return False
+            return True
+        return True
+
+    def _historical_decision_check(self, strategy_name: str, pred: int, broker_sym: str, sym_ia: str, tf: str, p_buy: float = 0.0, p_sell: float = 0.0) -> bool:
+        cfg = self._runtime_filter_config(
+            "historical_decision",
+            (getattr(self, "config", {}) or {}).get("entry_filters", {}).get("historical_decision", {}) or {},
+            sym_ia,
+            tf,
+        )
+        if not bool(cfg.get("enabled", True)):
+            return True
+        mode = str(cfg.get("mode", "shadow") or "shadow").lower()
+
+        # shadow mode only records diagnostics
+        symbol_for_check = self._normalized_signal_symbol(sym_ia) or str(sym_ia or broker_sym or "").upper()
+        if not symbol_for_check:
+            return True
+
+        provider = getattr(self, "historical_market_provider", None)
+        if provider is None:
+            return True
+        total = provider.bar_count(symbol_for_check, tf)
+        if total <= 0:
+            return True
+        index = max(0, total - 1)
+        lookback = int(cfg.get("lookback_bars", 80) or 80)
+
+        try:
+            acceptance = self.historical_acceptance_engine.evaluate(symbol_for_check, tf, index, lookback, use_profile=True)
+
+            bars = provider.get_bars(symbol_for_check, tf, index, lookback)
+            rows = []
+            for b in bars:
+                rows.append(
+                    {
+                        "time": getattr(b, "timestamp", None),
+                        "open": getattr(b, "open", 0.0),
+                        "high": getattr(b, "high", 0.0),
+                        "low": getattr(b, "low", 0.0),
+                        "close": getattr(b, "close", 0.0),
+                        "volume": getattr(b, "volume", 0.0),
+                    }
+                )
+            import pandas as _pd
+            frame = _pd.DataFrame(rows)
+            recency = self.historical_recency_engine.evaluate(frame)
+            mtf = self.historical_mtf_context_engine.evaluate({tf: frame})
+
+            zone_type = None
+            zone_low = None
+            zone_high = None
+            zone_ctx = acceptance.details.get("zone_context") if acceptance.details else None
+            if isinstance(zone_ctx, dict) and zone_ctx.get("zones"):
+                zone = self.historical_zone_detector.current_zone(zone_ctx, acceptance.current_price)
+                if zone:
+                    zone_type = zone.get("zone_type")
+                    zone_low = zone.get("price_low")
+                    zone_high = zone.get("price_high")
+
+            hist_decision = self.historical_decision_engine.evaluate(
+                acceptance_status=acceptance.status,
+                zone_type=zone_type,
+                recent_bias=recency.get("recent_bias"),
+                mtf_alignment=mtf.get("alignment"),
+                price=acceptance.current_price,
+                zone_low=zone_low,
+                zone_high=zone_high,
+            )
+
+            self._record_engine_output(
+                engine="historical_decision_gate",
+                direction=(hist_decision.get("decision") or "NEUTRAL").upper(),
+                score=float(hist_decision.get("confidence", 0.0) or 0.0),
+                confidence=float(hist_decision.get("confidence", 0.0) or 0.0),
+                state="ok" if hist_decision.get("decision") in {"buy", "sell"} else "blocked",
+                positive_factors=hist_decision.get("reasons", []),
+                negative_factors=hist_decision.get("reasons", []) if hist_decision.get("decision") == "hold" else [],
+                features={"acceptance_status": acceptance.status, "recency": recency, "mtf": mtf, "zone": {"type": zone_type, "low": zone_low, "high": zone_high}},
+            )
+
+            if hist_decision.get("decision") == "hold" and mode == "block":
+                self._last_execution_block_reason = ";".join(hist_decision.get("reasons") or ["historical_decision_hold"]) or "historical_decision_hold"
+                return False
+            return True
+        except Exception as exc:
+            self.logger.exception("Falha no historical decision check: %s", exc)
+            return True
+
+    def _trend_direction_allowed(self, strategy_name: str, pred: int, broker_sym: str, sym_ia: str, tf: str) -> bool:
+        cfg = self._runtime_filter_config(
+            "trend_direction_guard",
+            (getattr(self, "config", {}) or {}).get("entry_filters", {}).get("trend_direction_guard", {}) or {},
+            sym_ia,
+            tf,
+        )
+        # If not specified, default to enabled=True so the guard is active unless explicitly disabled
+        if not bool(cfg.get("enabled", True)):
+            return True
+        if pred not in (1, 2):
+            return True
+
+        requested_timeframes = [str(item).upper() for item in (cfg.get("timeframes", ["M15", "H1", "H4"]) or ["M15", "H1", "H4"])]
+        if not requested_timeframes:
+            requested_timeframes = ["M15", "H1", "H4"]
+        ordered = []
+        seen = set()
+        for item in requested_timeframes:
+            if item == "CURRENT":
+                item = str(tf).upper()
+            if item not in seen:
+                ordered.append(item)
+                seen.add(item)
+        if not ordered:
+            ordered = [str(tf).upper()]
+
+        votes = {"BUY": 0, "SELL": 0}
+        total_simple_slope = 0.0
+        bars = max(10, int(cfg.get("bars", 20) or 20))
+        min_rows = max(3, int(cfg.get("min_rows", 5) or 5))
+        local_timeframes = set(getattr(self, "TIMEFRAMES", ("M5", "M15", "M30", "H1", "H4", "D1")))
+        for timeframe in ordered:
+            if timeframe not in local_timeframes and timeframe not in {"CURRENT"}:
+                continue
+            frame = self.feature_calc.get_rates_frame(broker_sym, timeframe, bars, start_pos=0, min_rows=min_rows)
+            if frame.empty or len(frame) < min_rows:
+                continue
+            close = pd.to_numeric(frame["close"], errors="coerce")
+            ema_fast = close.ewm(span=int(cfg.get("ema_fast", 21) or 21), adjust=False).mean()
+            ema_slow = close.ewm(span=int(cfg.get("ema_slow", 50) or 50), adjust=False).mean()
+            if len(close) < 5:
+                continue
+            price = float(close.iloc[-1])
+            fast = float(ema_fast.iloc[-1])
+            slow = float(ema_slow.iloc[-1])
+            lookback = max(2, min(10, len(close) - 1))
+            fast_slope = float(ema_fast.iloc[-1] - ema_fast.iloc[-lookback])
+            if price > fast > slow and fast_slope >= 0.0:
+                votes["BUY"] += 1
+            elif price < fast < slow and fast_slope <= 0.0:
+                votes["SELL"] += 1
+            else:
+                # Fallback: simple slope over the available window for short frames
+                try:
+                    simple_slope = float(close.iloc[-1] - close.iloc[0])
+                except Exception:
+                    simple_slope = 0.0
+                total_simple_slope += simple_slope
+                if simple_slope > 0:
+                    votes["BUY"] += 1
+                elif simple_slope < 0:
+                    votes["SELL"] += 1
+
+        mode = str(cfg.get("mode", "block") or "block").lower()
+        if mode == "shadow":
+            return True
+
+        # Primary vote check
+        if pred == 1 and votes["SELL"] > votes["BUY"]:
+            self._last_execution_block_reason = "trend_direction_contra:SELL>BUY"
+            return False
+        if pred == 2 and votes["BUY"] > votes["SELL"]:
+            self._last_execution_block_reason = "trend_direction_contra:BUY>SELL"
+            return False
+        # Fallback: if aggregate simple slope across timeframes clearly contradicts the signal, block
+        if total_simple_slope > 0 and pred == 2:
+            self._last_execution_block_reason = "trend_direction_contra:aggregate_positive_slope"
+            return False
+        if total_simple_slope < 0 and pred == 1:
+            self._last_execution_block_reason = "trend_direction_contra:aggregate_negative_slope"
+            return False
+        if not votes["BUY"] and not votes["SELL"]:
+            return True
+        return True
 
     def _runtime_filter_config(self, filter_name: str, base_cfg: dict, symbol: str | None = None, timeframe: str | None = None) -> dict:
         """Apply hot runtime overrides for entry filters without mutating YAML config."""
         cfg = dict(base_cfg or {})
-        runtime_cfg = self.runtime_control.section("filters")
+        runtime_cfg = getattr(self, "runtime_control", {})
+        # runtime_control may be a dict (tests) or an object with section()
+        if hasattr(runtime_cfg, "section"):
+            try:
+                runtime_cfg = runtime_cfg.section("filters")
+            except Exception:
+                runtime_cfg = {}
+        elif not isinstance(runtime_cfg, dict):
+            runtime_cfg = {}
         specific = runtime_cfg.get(filter_name, {}) if isinstance(runtime_cfg, dict) else {}
         if isinstance(specific, dict):
             for key, value in specific.items():
@@ -2297,86 +1203,60 @@ class FusionV2:
         extra: dict | None = None,
         correlation_id: str = "",
     ) -> str:
+        return self.decision_audit_service.audit_decision_event(
+            strategy_name=strategy_name,
+            pred=pred,
+            broker_sym=broker_sym,
+            sym_ia=sym_ia,
+            tf=tf,
+            decision=decision,
+            reason=reason,
+            p_buy=p_buy,
+            p_sell=p_sell,
+            extra=extra,
+            correlation_id=correlation_id,
+            decision_engine_outputs=self._decision_engine_outputs,
+        )
+
+    def _decision_engine_final_check(
+        self,
+        strategy_name: str,
+        pred: int,
+        broker_sym: str,
+        sym_ia: str,
+        tf: str,
+        p_buy: float = 0.0,
+        p_sell: float = 0.0,
+        extra: dict | None = None,
+    ) -> tuple[bool, DecisionResult | None]:
         cfg = self.config.get("decision_engine", {}) or {}
         if not bool(cfg.get("enabled", True)):
-            return correlation_id
-        side = self._prediction_side(pred)
+            return True, None
+        if pred not in (1, 2):
+            return True, None
         candidate = SignalCandidate(
             symbol=sym_ia.upper(),
             broker_symbol=broker_sym,
             timeframe=tf,
-            side=side,
+            side=self._prediction_side(pred),
             strategy=strategy_name,
             raw_prediction=pred,
             p_buy=float(p_buy or 0.0),
             p_sell=float(p_sell or 0.0),
         )
         policy_result = self.decision_orchestrator.policy.combine(candidate, self._decision_engine_outputs)
-        result = DecisionResult(
-            decision=decision,
-            reason=reason,
-            consensus_score=policy_result.consensus_score,
-            conflict_score=policy_result.conflict_score,
-            tradeability_score=policy_result.tradeability_score,
-            position_multiplier=policy_result.position_multiplier,
-            positive_factors=policy_result.positive_factors,
-            negative_factors=policy_result.negative_factors,
-            warnings=policy_result.warnings,
+        return self.decision_audit_service.decision_engine_final_check(
+            strategy_name=strategy_name,
+            pred=pred,
+            broker_sym=broker_sym,
+            sym_ia=sym_ia,
+            tf=tf,
+            p_buy=p_buy,
+            p_sell=p_sell,
+            extra=extra,
+            decision_engine_outputs=self._decision_engine_outputs,
+            emit_gate_decision=self._emit_gate_decision,
         )
-        explanation = build_xai_explanation(
-            candidate,
-            result,
-            list(self._decision_engine_outputs),
-            top_n=int(cfg.get("xai_top_factors", 8) or 8),
-        ) if bool(cfg.get("xai_enabled", True)) else {}
-        if not correlation_id:
-            correlation_id = self._active_signal_correlation_id or f"{sym_ia.upper()}:{tf}:{strategy_name}:{datetime.now().isoformat()}"
-        event = DecisionEvent(
-            candidate=candidate,
-            result=result,
-            engines=list(self._decision_engine_outputs),
-            portfolio=extra or {},
-            explanation=explanation,
-            correlation_id=correlation_id,
-        )
-        self.decision_layers_state[(sym_ia.upper(), tf.upper())] = MT5DecisionLayersExporter.rows_from_outputs(
-            tf,
-            list(self._decision_engine_outputs),
-            decision=decision,
-            reason=reason,
-        )
-        try:
-            self.decision_orchestrator.audit_logger.write(event)
-        except Exception as exc:
-            self.logger.warning(f"Falha ao gravar decision audit: {exc}")
-        if bool((self.config.get("event_bus", {}) or {}).get("log_engine_results", True)):
-            candidate_payload = candidate.__dict__.copy()
-            for output in self._decision_engine_outputs:
-                self._publish_event(
-                    FusionEventType.ENGINE_RESULT,
-                    {
-                        "candidate": candidate_payload,
-                        "engine": {
-                            "engine": output.engine,
-                            "direction": output.direction,
-                            "score": output.score,
-                            "confidence": output.confidence,
-                            "state": output.state,
-                            "positive_factors": output.positive_factors,
-                            "negative_factors": output.negative_factors,
-                            "warnings": output.warnings,
-                            "features": output.features,
-                        },
-                    },
-                    source=str(output.engine or "Engine"),
-                    correlation_id=correlation_id,
-                )
-        self._publish_event(
-            FusionEventType.DECISION,
-            event.to_dict(),
-            correlation_id=correlation_id,
-        )
-        return correlation_id
 
     @staticmethod
     def _dashboard_reason_key(part: str) -> str:
@@ -2426,7 +1306,7 @@ class FusionV2:
         }.get(str(tf).upper())
 
     def _macro_flow_rates(self, broker_sym: str, tf: str, bars: int) -> pd.DataFrame:
-        frame = self._get_rates_frame(broker_sym, tf, bars, start_pos=0, min_rows=60)
+        frame = self.feature_calc.get_rates_frame(broker_sym, tf, bars, start_pos=0, min_rows=60)
         if frame.empty or len(frame) < 60:
             return pd.DataFrame()
         return frame
@@ -2472,7 +1352,15 @@ class FusionV2:
             return False
         return True
 
-    def _volatility_engine_check(self, strategy_name: str, broker_sym: str, sym_ia: str, tf: str) -> bool:
+    def _volatility_engine_check(
+        self,
+        strategy_name: str,
+        broker_sym: str,
+        sym_ia: str,
+        tf: str,
+        p_buy: float = 0.0,
+        p_sell: float = 0.0,
+    ) -> bool:
         cfg = self._runtime_filter_config("volatility_engine", self.config.get("entry_filters.volatility_engine", {}) or {}, sym_ia, tf)
         if not bool(cfg.get("enabled", False)):
             return True
@@ -2500,6 +1388,12 @@ class FusionV2:
                 f"state={output.state} score={output.score:.2f} atr_pct={output.features.get('atr_percentile')}"
             )
         if mode == "shadow" or not self._engine_state_should_block(cfg, output):
+            return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "volatility_engine", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} volatility_engine relaxed for strong short-term edge"
+            )
             return True
         self._last_execution_block_reason = f"volatility_engine:{output.state}"
         return False
@@ -2597,7 +1491,7 @@ class FusionV2:
         self._macro_flow_cache_minute = cache_key
         return snapshot
 
-    def _macro_flow_gate(self, strategy_name: str, pred: int, sym_ia: str, tf: str) -> bool:
+    def _macro_flow_gate(self, strategy_name: str, pred: int, sym_ia: str, tf: str, p_buy: float = 0.0, p_sell: float = 0.0) -> bool:
         cfg = self._runtime_filter_config("macro_flow", self.config.get("entry_filters.macro_flow", {}) or {}, sym_ia, tf)
         if not bool(cfg.get("enabled", False)):
             return True
@@ -2677,6 +1571,12 @@ class FusionV2:
             return True
         if mode == "shadow":
             return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "macro_flow", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} macro_flow relaxed for strong short-term edge"
+            )
+            return True
         self._last_execution_block_reason = f"{reason_code}:{'+'.join(reasons)}:score={macro_score:.3f}"
         return False
 
@@ -2734,6 +1634,12 @@ class FusionV2:
             )
 
         if mode == "shadow":
+            return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "market_alignment", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} market_alignment relaxed for strong short-term edge"
+            )
             return True
         if not self._engine_state_should_block(cfg, self._decision_engine_outputs[-1]):
             return True
@@ -2794,6 +1700,12 @@ class FusionV2:
             )
 
         if mode == "shadow":
+            return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "timeframe_consensus", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} timeframe_consensus relaxed for strong short-term edge"
+            )
             return True
         if not self._engine_state_should_block(cfg, self._decision_engine_outputs[-1]):
             return True
@@ -3101,23 +2013,7 @@ class FusionV2:
         return False
 
     def _manual_order_approval_cfg(self) -> dict:
-        cfg = self.config.get("trading.manual_approval", {}) or {}
-        runtime_cfg = self._runtime_section("manual_approval")
-        runtime_enabled = self.runtime_control.get("trading.manual_approval_enabled")
-        if runtime_enabled is None:
-            runtime_enabled = runtime_cfg.get("enabled")
-        return {
-            "enabled": bool(cfg.get("enabled", True) if runtime_enabled is None else runtime_enabled),
-            "request_file": str(
-                runtime_cfg.get("request_file", cfg.get("request_file", "fusion_manual_order_request.csv"))
-                or "fusion_manual_order_request.csv"
-            ),
-            "response_file": str(
-                runtime_cfg.get("response_file", cfg.get("response_file", "fusion_manual_order_response.csv"))
-                or "fusion_manual_order_response.csv"
-            ),
-            "timeout_seconds": float(runtime_cfg.get("timeout_seconds", cfg.get("timeout_seconds", 45)) or 45),
-        }
+        return self.execution_controls.manual_order_approval_cfg()
 
     def _mt5_execution_control(self) -> dict:
         # Legado do bridge/CSV removido do fluxo ativo.
@@ -3125,14 +2021,7 @@ class FusionV2:
         return {}
 
     def _fusion_orders_allowed(self) -> tuple[bool, str]:
-        runtime_allow = self.runtime_control.get("trading.allow_new_orders")
-        if runtime_allow is not None:
-            if not bool(runtime_allow):
-                return False, "runtime_allow_new_orders_false"
-            return True, "runtime_allow_new_orders"
-        if not bool(self.config.get("trading.allow_new_orders", True)):
-            return False, "allow_new_orders_false"
-        return True, "yaml_allow_new_orders"
+        return self.execution_controls.fusion_orders_allowed()
 
     def _normalize_execution_mode(self, value) -> str:
         mode = str(value or "").strip().lower()
@@ -3143,31 +2032,13 @@ class FusionV2:
         return ""
 
     def _execution_mode(self) -> str:
-        mode = self._normalize_execution_mode(self.runtime_control.get("trading.execution_mode", ""))
-        if mode:
-            return mode
-        mode = self._normalize_execution_mode(self.config.get("trading.execution_mode", ""))
-        if mode:
-            return mode
-        return "automatic"
+        return self.execution_controls.execution_mode()
 
     def _manual_order_approval_required(self) -> bool:
-        cfg = self._manual_order_approval_cfg()
-        if bool(cfg.get("enabled", False)):
-            return True
-        return self._execution_mode() == "manual"
+        return self.execution_controls.manual_order_approval_required()
+
     def _read_manual_order_response(self, request_id: str) -> str:
-        _request_path, response_path = self._manual_order_approval_paths()
-        if not response_path.exists():
-            return ""
-        try:
-            with response_path.open("r", newline="", encoding="utf-8") as handle:
-                for row in csv.DictReader(handle):
-                    if str(row.get("request_id", "")) == request_id:
-                        return str(row.get("response", "") or "").upper()
-        except Exception as exc:
-            self.logger.warning(f"[MANUAL_APPROVAL] Falha ao ler resposta: {exc}")
-        return ""
+        return self.execution_controls.read_manual_order_response(request_id)
 
     def _await_manual_order_approval(
         self,
@@ -3183,12 +2054,7 @@ class FusionV2:
         magic: int,
         strategy_name: str,
     ) -> bool:
-        if not self._manual_order_approval_required():
-            return True
-
-        cfg = self._manual_order_approval_cfg()
-        timeout_seconds = max(1.0, float(cfg.get("timeout_seconds", 45) or 45))
-        self._write_manual_order_request(
+        result = self.execution_controls.await_manual_order_approval(
             request_id,
             broker_sym,
             sym_ia,
@@ -3201,25 +2067,9 @@ class FusionV2:
             magic,
             strategy_name,
         )
-        self.logger.warning(
-            f"[MANUAL_APPROVAL] Aguardando aprovacao no MT5: {sym_ia} {tf} {side} "
-            f"timeout={timeout_seconds:.0f}s"
-        )
-        deadline = time.time() + timeout_seconds
-        while time.time() < deadline:
-            response = self._read_manual_order_response(request_id)
-            if response in {"APPROVED", "YES", "SIM"}:
-                self.logger.info(f"[MANUAL_APPROVAL] Aprovado no MT5: {sym_ia} {tf} {side}")
-                return True
-            if response in {"REJECTED", "NO", "NAO", "NÃƒO", "CANCELLED", "CANCELED"}:
-                self.logger.info(f"[MANUAL_APPROVAL] Rejeitado no MT5: {sym_ia} {tf} {side}")
-                self._last_execution_block_reason = "manual_approval_rejected"
-                return False
-            time.sleep(0.5)
-
-        self._last_execution_block_reason = "manual_approval_timeout"
-        self.logger.warning(f"[MANUAL_APPROVAL] Timeout sem resposta: {sym_ia} {tf} {side}")
-        return False
+        if not result and self._last_execution_block_reason == "":
+            self._last_execution_block_reason = "manual_approval_timeout"
+        return result
 
     def _market_alignment_snapshot(self, broker_sym: str, sym_ia: str, signal_tf: str, side: str, cfg: dict) -> dict:
         tf_names = ["M5", "M15", "M30", "H1", "H4", "D1"]
@@ -3311,7 +2161,7 @@ class FusionV2:
 
     def _market_alignment_timeframe(self, broker_sym: str, tf_name: str) -> tuple[str, float, float]:
         bars = 220 if tf_name != "D1" else 140
-        frame = self._get_rates_frame(broker_sym, tf_name, bars, start_pos=0, min_rows=80)
+        frame = self.feature_calc.get_rates_frame(broker_sym, tf_name, bars, start_pos=0, min_rows=80)
         if frame.empty or len(frame) < 80:
             return "NEUTRO", 0.0, 0.0
         closes = [float(item) for item in frame["close"].tolist()]
@@ -3490,7 +2340,7 @@ class FusionV2:
         failures = []
 
         for tf in required_tfs:
-            df = self._get_rates_frame(broker_symbol, tf, 90, start_pos=0, min_rows=55)
+            df = self.feature_calc.get_rates_frame(broker_symbol, tf, 90, start_pos=0, min_rows=55)
             tick = mt5.symbol_info_tick(broker_symbol)
             if df.empty or len(df) < 55 or tick is None:
                 failures.append(f"{tf}:dados_insuficientes")
@@ -3823,10 +2673,11 @@ class FusionV2:
             correlation_id=advisor_correlation_id,
         )
         if bool(cfg.get("log_each_check", True)):
+            factors = output.negative_factors or output.positive_factors or [output.state]
             self.logger.info(
                 f"{strategy_name.upper()} {sym_ia} {tf} ai_advisor {mode}: "
                 f"state={output.state} conf={output.confidence:.2f} "
-                f"factors={','.join((output.negative_factors or output.positive_factors or output.warnings)[:2])}"
+                f"factors={','.join((factors)[:2])}"
             )
         if mode == "shadow":
             return True
@@ -3928,13 +2779,19 @@ class FusionV2:
             "strong_institutional_alignment",
         }:
             label = str((output.features or {}).get("final_label", output.direction) or output.direction)
-            factors = output.negative_factors or output.warnings or output.positive_factors or [output.state]
+            factors = output.negative_factors or output.positive_factors or [output.state]
             self.logger.info(
                 f"{strategy_name.upper()} {sym_ia} {tf} context_brain {mode}: "
                 f"label={label} state={output.state} score={output.score:.2f} "
                 f"conf={output.confidence:.2f} factors={','.join(factors[:3])}"
             )
         if mode == "shadow":
+            return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "context_brain", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} context_brain relaxed for strong short-term edge"
+            )
             return True
         if not self._engine_state_should_block(cfg, output):
             return True
@@ -4529,7 +3386,77 @@ class FusionV2:
             )
         if mode == "shadow" or not self._engine_state_should_block(cfg, output):
             return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "opportunity_engine", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} opportunity_engine relaxed for strong short-term edge"
+            )
+            return True
         reason_code = str(cfg.get("reason_code", "opportunity_engine") or "opportunity_engine")
+        self._last_execution_block_reason = f"{reason_code}:{output.state}"
+        return False
+
+    def _factor_engine_check(
+        self,
+        strategy_name: str,
+        pred: int,
+        broker_sym: str,
+        sym_ia: str,
+        tf: str,
+        p_buy: float = 0.0,
+        p_sell: float = 0.0,
+    ) -> bool:
+        cfg = self._runtime_filter_config("factor_engine", self.config.get("entry_filters.factor_engine", {}) or {}, sym_ia, tf)
+        if not bool(cfg.get("enabled", False)):
+            return True
+        if pred not in (1, 2):
+            return True
+        mode = str(cfg.get("mode", "shadow") or "shadow").lower()
+        bars = max(100, int(cfg.get("bars", 120) or 120))
+        frame = self.feature_calc.get_rates_frame(broker_sym, tf, bars, start_pos=0, min_rows=bars)
+        candidate = SignalCandidate(
+            symbol=sym_ia.upper(),
+            broker_symbol=broker_sym,
+            timeframe=tf,
+            side=self._prediction_side(pred),
+            strategy=strategy_name,
+            raw_prediction=pred,
+            p_buy=float(p_buy or 0.0),
+            p_sell=float(p_sell or 0.0),
+        )
+        context: dict[str, Any] = {
+            "symbol": sym_ia.upper(),
+            "broker_symbol": broker_sym,
+            "timeframe": tf,
+            "side": self._prediction_side(pred),
+            "strategy": strategy_name,
+            "raw_prediction": pred,
+            "p_buy": float(p_buy or 0.0),
+            "p_sell": float(p_sell or 0.0),
+            "closes": frame["close"].astype(float).tolist() if not frame.empty and "close" in frame.columns else [],
+            "highs": frame["high"].astype(float).tolist() if not frame.empty and "high" in frame.columns else [],
+            "lows": frame["low"].astype(float).tolist() if not frame.empty and "low" in frame.columns else [],
+            "volumes": frame["tick_volume"].astype(float).tolist() if not frame.empty and "tick_volume" in frame.columns else [],
+            "history_closes": frame["close"].astype(float).tolist() if not frame.empty and "close" in frame.columns else [],
+        }
+        enabled_factors = cfg.get("enabled_factors", []) or []
+        if isinstance(enabled_factors, str):
+            enabled_factors = [item.strip() for item in enabled_factors.split(",") if item.strip()]
+        engine = FactorEngine(
+            enabled_factors=enabled_factors,
+            min_confidence=float(cfg.get("min_confidence", 0.15) or 0.15),
+        )
+        output = engine.evaluate(candidate, context)
+        self._decision_engine_outputs.append(output)
+        if bool(cfg.get("log_each_check", False)):
+            self.logger.info(
+                f"{strategy_name.upper()} {sym_ia} {tf} factor_engine {mode}: "
+                f"state={output.state} score={output.score:.2f} conf={output.confidence:.2f} "
+                f"aligned={len(output.positive_factors)} conflict={len(output.negative_factors)}"
+            )
+        if mode == "shadow" or not self._engine_state_should_block(cfg, output):
+            return True
+        reason_code = str(cfg.get("reason_code", "factor_engine") or "factor_engine")
         self._last_execution_block_reason = f"{reason_code}:{output.state}"
         return False
 
@@ -4571,10 +3498,11 @@ class FusionV2:
         self._decision_engine_outputs.append(output)
         self._last_market_briefing_reason = ""
         if output.state in {"block", "moderate"}:
-            factors = output.negative_factors or output.warnings or ["briefing"]
+            # Prefer explicit negative reasons, then positives; fallback to warnings for diagnosability
+            factors = output.negative_factors or output.positive_factors or output.warnings or ["briefing"]
             self._last_market_briefing_reason = f"MB:shadow:{output.state}:{factors[0]}"
         if bool(cfg.get("log_each_check", True)) and output.state != "ok":
-            factors = output.negative_factors or output.warnings or ["ok"]
+            factors = output.negative_factors or output.positive_factors or ["ok"]
             self.logger.info(
                 f"{strategy_name.upper()} {sym_ia} {tf} market_briefing {mode}: "
                 f"state={output.state} score={output.score:.2f} factors={','.join(factors[:2])}"
@@ -4606,6 +3534,7 @@ class FusionV2:
         """
         checks = [
             ("entry_filters.meta_model_ensemble", lambda: self._meta_model_ensemble_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell, model=model, approved_model=approved_model, approved_status=approved_status)),
+            ("entry_filters.factor_engine", lambda: self._factor_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell)),
             ("entry_filters.market_briefing", lambda: self._market_briefing_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell)),
             ("entry_filters.market_regime", lambda: self._market_regime_check(strategy_name, pred, broker_sym, sym_ia, tf)),
             ("entry_filters.volatility_engine", lambda: self._volatility_engine_check(strategy_name, broker_sym, sym_ia, tf)),
@@ -4622,6 +3551,7 @@ class FusionV2:
         engine_names = {
             "entry_filters.market_briefing": "market_briefing",
             "entry_filters.meta_model_ensemble": "meta_model_ensemble",
+            "entry_filters.factor_engine": "factor_engine",
             "entry_filters.market_regime": "market_regime",
             "entry_filters.volatility_engine": "volatility_engine",
             "entry_filters.session_context": "session_context",
@@ -4810,6 +3740,12 @@ class FusionV2:
             or (pred == 2 and bool(features.get("valid_sell_break", False)))
         )
         if bool(cfg.get("block_extreme_entries", True)) and (buy_at_top or sell_at_bottom) and not valid_extreme_breakout:
+            relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+            if self._should_relax_filter_for_daytrade(relax_cfg, "entry_timing", tf, p_buy, p_sell):
+                self.logger.info(
+                    f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} entry_timing relaxed for strong short-term edge"
+                )
+                return True
             reason_code = str(cfg.get("reason_code", "entry_timing") or "entry_timing")
             factor = "comprar_topo_sem_rompimento_validado" if buy_at_top else "vender_fundo_sem_rompimento_validado"
             self._last_execution_block_reason = f"{reason_code}:{factor}"
@@ -4819,12 +3755,18 @@ class FusionV2:
             )
             return mode == "shadow"
         if bool(cfg.get("log_each_check", True)) and output.state not in {"ok", "validated_breakout_buy", "validated_breakout_sell"}:
-            factors = output.negative_factors or output.warnings or [output.state]
+            factors = output.negative_factors or output.positive_factors or [output.state]
             self.logger.info(
                 f"{strategy_name.upper()} {sym_ia} {tf} entry_timing {mode}: "
                 f"state={output.state} score={output.score:.2f} factors={','.join(factors[:2])}"
             )
         if mode == "shadow" or not output.negative_factors:
+            return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "entry_timing", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} entry_timing relaxed for strong short-term edge"
+            )
             return True
         reason_code = str(cfg.get("reason_code", "entry_timing") or "entry_timing")
         factor = output.negative_factors[0]
@@ -4838,6 +3780,8 @@ class FusionV2:
         broker_sym: str,
         sym_ia: str,
         tf: str,
+        p_buy: float = 0.0,
+        p_sell: float = 0.0,
     ) -> bool:
         cfg = self._runtime_filter_config(
             "execution_engine",
@@ -4867,12 +3811,18 @@ class FusionV2:
         output = engine.evaluate(frame, self._prediction_side(pred))
         self._decision_engine_outputs.append(output)
         if bool(cfg.get("log_each_check", True)) and output.state not in {"good_execution", "acceptable_with_warnings"}:
-            factors = output.negative_factors or output.warnings or [output.state]
+            factors = output.negative_factors or output.positive_factors or [output.state]
             self.logger.info(
                 f"{strategy_name.upper()} {sym_ia} {tf} execution_engine {mode}: "
                 f"state={output.state} score={output.score:.2f} factors={','.join(factors[:2])}"
             )
         if mode == "shadow" or not output.negative_factors:
+            return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "execution_engine", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} execution_engine relaxed for strong short-term edge"
+            )
             return True
         reason_code = str(cfg.get("reason_code", "execution_engine") or "execution_engine")
         factor = output.negative_factors[0]
@@ -4922,6 +3872,32 @@ class FusionV2:
                 }
             )
         return rows
+
+    def _swap_filter_check(
+        self,
+        strategy_name: str,
+        pred: int,
+        broker_sym: str,
+        sym_ia: str,
+        tf: str,
+        p_buy: float = 0.0,
+        p_sell: float = 0.0,
+        swap_long: float = 0.0,
+        swap_short: float = 0.0,
+    ) -> bool:
+        """SWAP filtro removido do sistema. Não bloqueia ordens em qualquer condição."""
+        _ = (strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell, swap_long, swap_short)
+        self._last_execution_block_reason = ""
+        self._record_engine_output(
+            engine="swap_filter",
+            direction=self._prediction_side(pred),
+            score=1.0,
+            confidence=1.0,
+            state="disabled",
+            positive_factors=["swap_filter_disabled"],
+            negative_factors=[],
+        )
+        return True
 
     def _risk_engine_check(
         self,
@@ -4981,9 +3957,23 @@ class FusionV2:
             account=self._risk_engine_account_snapshot(),
             positions=self._risk_engine_positions_snapshot(),
         )
+        # If floating loss in dollars is below configured money limit, remove
+        # blocking-only factors related to position counts so they don't prevent
+        # new openings. This enforces the operator rule: "não bloquear por
+        # muitas posições negativas a menos que drawdown > limite ($70 por padrão)".
+        money_limit = float(cfg.get("max_floating_loss_money", 70.0) or 70.0)
+        floating_profit = float((output.features or {}).get("floating_profit", 0.0) or 0.0)
+        floating_loss = max(0.0, -floating_profit)
+        if floating_loss < money_limit:
+            neg = [str(item or "") for item in (output.negative_factors or [])]
+            filtered = [f for f in neg if not (f.startswith("muitas_posicoes") or f.startswith("muitas_posicoes_negativas"))]
+            # update output in-place
+            output.negative_factors = filtered
         self._decision_engine_outputs.append(output)
         if bool(cfg.get("log_each_check", True)) and output.state != "normal_risk":
-            factors = output.negative_factors or output.warnings or [output.state]
+            # Only show negative or positive factors in the short "factors" field.
+            # Warnings should not be rendered here to avoid implying a blocking reason.
+            factors = output.negative_factors or output.positive_factors or [output.state]
             self.logger.info(
                 f"{strategy_name.upper()} {sym_ia} {tf} risk_engine {mode}: "
                 f"state={output.state} score={output.score:.2f} "
@@ -4998,53 +3988,7 @@ class FusionV2:
         return False
 
     def _strategy_group_exposure_allowed(self, strategy_name: str, sym_ia: str, pred: int) -> bool:
-        cfg = self._strategy_config(strategy_name)
-        exposure_cfg = cfg.get("exposure_groups", {}) or {}
-        if not bool(cfg.get("use_exposure_groups", False)) or not exposure_cfg:
-            return True
-
-        candidate_symbol = sym_ia.upper()
-        candidate_direction = 1 if pred == 1 else -1
-        strategy_magics = set(self._strategy_magic_group(strategy_name))
-        positions = mt5.positions_get()
-        positions = list(positions) if positions else []
-
-        for group_name, group in exposure_cfg.items():
-            symbols_cfg = group.get("symbols", {}) or {}
-            if candidate_symbol not in symbols_cfg:
-                continue
-
-            max_units = float(group.get("max_units", 2.0))
-            offset_credit = float(group.get("opposite_direction_credit", 0.5))
-            current_units = 0.0
-            opposite_units = 0.0
-
-            for pos in positions:
-                if int(pos.magic) not in strategy_magics:
-                    continue
-                pos_symbol = self._broker_symbol_to_base(pos.symbol)
-                if pos_symbol not in symbols_cfg:
-                    continue
-                pos_weight = float(symbols_cfg[pos_symbol].get("weight", 1.0))
-                pos_bias = int(symbols_cfg[pos_symbol].get("bias", 1))
-                pos_direction = 1 if pos.type == mt5.ORDER_TYPE_BUY else -1
-                exposure_direction = pos_direction * pos_bias
-                candidate_exposure_direction = candidate_direction * int(symbols_cfg[candidate_symbol].get("bias", 1))
-                if exposure_direction == candidate_exposure_direction:
-                    current_units += pos_weight
-                else:
-                    opposite_units += pos_weight
-
-            candidate_weight = float(symbols_cfg[candidate_symbol].get("weight", 1.0))
-            projected_units = current_units + candidate_weight - (opposite_units * offset_credit)
-            if projected_units > max_units:
-                self.logger.info(
-                    f"{strategy_name.upper()} bloqueada por grupo {group_name}: "
-                    f"{candidate_symbol} projetado={projected_units:.2f} limite={max_units:.2f}"
-                )
-                return False
-
-        return True
+        return self.strategy_service._strategy_group_exposure_allowed(strategy_name, sym_ia, pred)
 
     def _mt5_trading_allowed(self) -> tuple[bool, str]:
         if mt5 is None:
@@ -5071,7 +4015,7 @@ class FusionV2:
         }.get(str(tf).upper())
 
     def _market_structure_rates(self, broker_sym: str, tf: str, bars: int) -> pd.DataFrame:
-        frame = self._get_rates_frame(broker_sym, tf, bars, start_pos=0, min_rows=50)
+        frame = self.feature_calc.get_rates_frame(broker_sym, tf, bars, start_pos=0, min_rows=50)
         if frame.empty or len(frame) < 50:
             return pd.DataFrame()
         return frame
@@ -5235,7 +4179,16 @@ class FusionV2:
         except Exception as exc:
             self.logger.warning(f"Falha ao gravar market_structure shadow log: {exc}")
 
-    def _market_structure_gate(self, strategy_name: str, pred: int, broker_sym: str, sym_ia: str, tf: str) -> bool:
+    def _market_structure_gate(
+        self,
+        strategy_name: str,
+        pred: int,
+        broker_sym: str,
+        sym_ia: str,
+        tf: str,
+        p_buy: float = 0.0,
+        p_sell: float = 0.0,
+    ) -> bool:
         cfg = self._runtime_filter_config("market_structure", self.config.get("entry_filters.market_structure", {}) or {}, sym_ia, tf)
         self._last_market_structure_reason = ""
         self._last_market_structure_snapshot = {}
@@ -5345,6 +4298,12 @@ class FusionV2:
             return True
         if short_reasons == ["ok"]:
             return True
+        relax_cfg = self.config.get("entry_filters.daytrade_relaxation", {}) or {}
+        if self._should_relax_filter_for_daytrade(relax_cfg, "market_structure", tf, p_buy, p_sell):
+            self.logger.info(
+                f"[DAYTRADE_RELAX] {strategy_name.upper()} {sym_ia} {tf} market_structure relaxed for strong short-term edge"
+            )
+            return True
         self._last_execution_block_reason = "market_structure_block"
         return False
 
@@ -5416,92 +4375,267 @@ class FusionV2:
         sl_points = int(cfg.get("sl_points", cfg.get("default_sl_points", self.config.get("risk.default_sl_points", 100))))
 
         self._last_execution_block_reason = ""
-        if not self._meta_model_ensemble_check(
+        if not self._run_gate_check(
             strategy_name,
             pred,
             broker_sym,
             sym_ia,
             tf,
-            p_buy,
-            p_sell,
-            model=model,
-            approved_model=approved_model,
-            approved_status=approved_status,
+            "historical_price_acceptance",
+            lambda: self._historical_price_acceptance_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
+            if not self._last_execution_block_reason:
+                self._last_execution_block_reason = "historical_price_out_of_domain"
+            self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
+            return None
+        # historical decision gate: optional higher-level decision combining acceptance, zones, recency and MTF
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "historical_decision",
+            lambda: self._historical_decision_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
+            if not self._last_execution_block_reason:
+                self._last_execution_block_reason = "historical_decision_block"
+            self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
+            return None
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "meta_model_ensemble",
+            lambda: self._meta_model_ensemble_check(
+                strategy_name,
+                pred,
+                broker_sym,
+                sym_ia,
+                tf,
+                p_buy,
+                p_sell,
+                model=model,
+                approved_model=approved_model,
+                approved_status=approved_status,
+            ),
         ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "meta_model_ensemble"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._market_briefing_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "factor_engine",
+            lambda: self._factor_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
+            if not self._last_execution_block_reason:
+                self._last_execution_block_reason = "factor_engine"
+            self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
+            return None
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "market_briefing",
+            lambda: self._market_briefing_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "market_briefing"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._market_regime_check(strategy_name, pred, broker_sym, sym_ia, tf):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "market_regime",
+            lambda: self._market_regime_check(strategy_name, pred, broker_sym, sym_ia, tf),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "regime_bloqueado"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._volatility_engine_check(strategy_name, broker_sym, sym_ia, tf):
+        if not self._trend_direction_allowed(strategy_name, pred, broker_sym, sym_ia, tf):
+            self._audit_block_with_shadow(
+                strategy_name,
+                pred,
+                broker_sym,
+                sym_ia,
+                tf,
+                self._last_execution_block_reason or "trend_direction_contra",
+                p_buy,
+                p_sell,
+            )
+            return None
+        # SWAP filter removido do fluxo de execução: qualquer custo de swap nunca deve
+        # bloquear uma ordem no sistema. O valor continua disponível para observação,
+        # mas não interfere na decisão de entrada.
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "volatility_engine",
+            lambda: self._volatility_engine_check(strategy_name, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "volatility_engine"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._session_context_check(strategy_name, pred, sym_ia, tf):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "session_context",
+            lambda: self._session_context_check(strategy_name, pred, sym_ia, tf),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "session_context"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._macro_flow_gate(strategy_name, pred, sym_ia, tf):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "macro_flow",
+            lambda: self._macro_flow_gate(strategy_name, pred, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "macro_fluxo_contra"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._market_alignment_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "market_alignment",
+            lambda: self._market_alignment_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "market_alignment"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._timeframe_consensus_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "timeframe_consensus",
+            lambda: self._timeframe_consensus_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "timeframe_consensus"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._portfolio_exposure_check(strategy_name, pred, sym_ia):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "portfolio_exposure",
+            lambda: self._portfolio_exposure_check(strategy_name, pred, sym_ia),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "portfolio_exposure"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._portfolio_correlation_allowed(strategy_name, sym_ia, pred):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "portfolio_correlation",
+            lambda: self._portfolio_correlation_allowed(strategy_name, sym_ia, pred),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "correlacao_prejuizo"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._market_structure_gate(strategy_name, pred, broker_sym, sym_ia, tf):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "market_structure",
+            lambda: self._market_structure_gate(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             self._last_execution_block_reason = "market_structure_block"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._feature_engineering_check(strategy_name, broker_sym, sym_ia, tf):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "feature_engineering",
+            lambda: self._feature_engineering_check(strategy_name, broker_sym, sym_ia, tf),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "feature_engineering"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._entry_timing_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "entry_timing",
+            lambda: self._entry_timing_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "entry_timing"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._execution_engine_check(strategy_name, pred, broker_sym, sym_ia, tf):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "execution_engine",
+            lambda: self._execution_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "execution_engine"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._risk_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "risk_engine",
+            lambda: self._risk_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "risk_engine"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._strategy_candle_price_confirmation_ok(strategy_name, pred, broker_sym, sym_ia, tf):
+        if not self.ema_alignment.strategy_candle_price_confirmation_ok(strategy_name, pred, broker_sym, sym_ia, tf):
             self._last_execution_block_reason = "preco_candle_nao_confirmado"
             self._record_engine_output(
                 engine="candle_price",
@@ -5511,6 +4645,7 @@ class FusionV2:
                 state="blocked",
                 negative_factors=["preco_candle_nao_confirmado"],
             )
+            self._emit_gate_decision(strategy_name, sym_ia, tf, "candle_price", False, self._last_execution_block_reason)
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
         self._record_engine_output(
@@ -5521,7 +4656,7 @@ class FusionV2:
             state="ok",
             positive_factors=["preco_candle_confirmado"],
         )
-        if not self._strategy_ema_alignment_ok(strategy_name, pred, broker_sym, sym_ia, tf):
+        if not self.ema_alignment.strategy_ema_alignment_ok(strategy_name, pred, broker_sym, sym_ia, tf):
             self._last_execution_block_reason = "ema_nao_alinhada"
             self._record_engine_output(
                 engine="ema_alignment",
@@ -5531,6 +4666,7 @@ class FusionV2:
                 state="blocked",
                 negative_factors=["ema_nao_alinhada"],
             )
+            self._emit_gate_decision(strategy_name, sym_ia, tf, "ema_alignment", False, self._last_execution_block_reason)
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
         self._record_engine_output(
@@ -5542,27 +4678,67 @@ class FusionV2:
             positive_factors=["emas_alinhadas"],
         )
 
-        if not self._context_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "context_engine",
+            lambda: self._context_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "context_engine"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._confidence_calibration_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "confidence_calibration",
+            lambda: self._confidence_calibration_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "confidence_calibration"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._consensus_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "consensus_engine",
+            lambda: self._consensus_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "consensus_engine"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._opportunity_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "opportunity_engine",
+            lambda: self._opportunity_engine_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "opportunity_engine"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
             return None
-        if not self._context_brain_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell):
+        if not self._run_gate_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            "context_brain",
+            lambda: self._context_brain_check(strategy_name, pred, broker_sym, sym_ia, tf, p_buy, p_sell),
+        ):
             if not self._last_execution_block_reason:
                 self._last_execution_block_reason = "context_brain"
             self._audit_block_with_shadow(strategy_name, pred, broker_sym, sym_ia, tf, self._last_execution_block_reason, p_buy, p_sell)
@@ -5601,6 +4777,28 @@ class FusionV2:
             )
             return None
 
+        final_allowed, decision_result = self._decision_engine_final_check(
+            strategy_name,
+            pred,
+            broker_sym,
+            sym_ia,
+            tf,
+            p_buy,
+            p_sell,
+            extra=advisor_extra,
+        )
+        if not final_allowed:
+            self._last_execution_block_reason = (
+                decision_result.reason if decision_result is not None else "decision_engine"
+            )
+            return None
+
+        if decision_result is not None:
+            advisor_extra["decision_score"] = decision_result.decision_score
+            advisor_extra["decision_reason"] = decision_result.reason
+            advisor_extra["tradeability_score"] = decision_result.tradeability_score
+            advisor_extra["conflict_score"] = decision_result.conflict_score
+
         loss_ok, loss_reason = self.trading._floating_loss_guard()
         if not loss_ok:
             self._last_execution_block_reason = loss_reason
@@ -5627,6 +4825,10 @@ class FusionV2:
 
         side = "BUY" if pred == 1 else "SELL"
         order_correlation_id = f"{sym_ia.upper()}:{tf}:{strategy_name}:{datetime.now().isoformat()}"
+        self.logger.info(
+            f"[ORDER] ATTEMPT {tag} {side} {broker_sym} {tf} | signal={pred} p_buy={p_buy:.4f} p_sell={p_sell:.4f} "
+            f"tp={tp_points} sl={sl_points}"
+        )
         if not self._await_manual_order_approval(
             order_correlation_id,
             broker_sym,
@@ -5653,6 +4855,18 @@ class FusionV2:
             )
             return None
 
+        order_metadata = {
+            "tp_points": tp_points,
+            "sl_points": sl_points,
+            "p_buy": p_buy,
+            "p_sell": p_sell,
+        }
+        if "decision_score" in advisor_extra:
+            order_metadata["decision_score"] = advisor_extra["decision_score"]
+            order_metadata["tradeability_score"] = advisor_extra["tradeability_score"]
+            order_metadata["conflict_score"] = advisor_extra["conflict_score"]
+            order_metadata["decision_reason"] = advisor_extra["decision_reason"]
+
         if pred == 1:
             self._audit_decision_event(
                 strategy_name, pred, broker_sym, sym_ia, tf, "ALLOW", "pre_order_checks_ok", p_buy, p_sell,
@@ -5669,7 +4883,7 @@ class FusionV2:
                 magic=magic,
                 status=OrderStatus.PENDING,
                 reason="pre_order_checks_ok",
-                metadata={"tp_points": tp_points, "sl_points": sl_points, "p_buy": p_buy, "p_sell": p_sell},
+                metadata=order_metadata,
             )
             self.oms.update_order(pending_order)
             self._publish_event(FusionEventType.ORDER_REQUEST, pending_order.to_dict(), correlation_id=order_correlation_id)
@@ -5696,7 +4910,7 @@ class FusionV2:
                 magic=magic,
                 status=OrderStatus.PENDING,
                 reason="pre_order_checks_ok",
-                metadata={"tp_points": tp_points, "sl_points": sl_points, "p_buy": p_buy, "p_sell": p_sell},
+                metadata=order_metadata,
             )
             self.oms.update_order(pending_order)
             self._publish_event(FusionEventType.ORDER_REQUEST, pending_order.to_dict(), correlation_id=order_correlation_id)
@@ -5731,7 +4945,7 @@ class FusionV2:
             self.logger.info(f"{tag} {action} NAO EXECUTADA: {sym_ia} {tf} | {result.message}")
         result_message = str(getattr(result, "message", "") if result else "")
         if result and (result.success or "JA_EXISTE" in result_message):
-            self.actionable_signal_state[(sym_ia.upper(), tf.upper())] = {
+            actionable_entry = {
                 "signal": pred,
                 "p_buy": p_buy,
                 "p_sell": p_sell,
@@ -5739,6 +4953,12 @@ class FusionV2:
                 "reason": result_message or "pre_order_checks_ok",
                 "timestamp": datetime.now().isoformat(),
             }
+            if "decision_score" in advisor_extra:
+                actionable_entry["decision_score"] = advisor_extra["decision_score"]
+                actionable_entry["tradeability_score"] = advisor_extra["tradeability_score"]
+                actionable_entry["conflict_score"] = advisor_extra["conflict_score"]
+                actionable_entry["decision_reason"] = advisor_extra["decision_reason"]
+            self.actionable_signal_state[(sym_ia.upper(), tf.upper())] = actionable_entry
         else:
             self.actionable_signal_state.pop((sym_ia.upper(), tf.upper()), None)
         return result
@@ -5766,7 +4986,7 @@ class FusionV2:
                     active_approved_model = None
                     if model:
                         reason_parts.append(f"approved_fallback:{approved_status}")
-                        X = self._calculate_features(broker_sym, tf)
+                        X = self.feature_calc.calculate_features(broker_sym, tf)
                         if X.empty:
                             self.monitor_state[key] = {
                                 "signal": -1,
@@ -5793,7 +5013,7 @@ class FusionV2:
                     if active_approved_model:
                         reason_parts.append(f"approved:{status_text}")
             elif model:
-                X = self._calculate_features(broker_sym, tf)
+                X = self.feature_calc.calculate_features(broker_sym, tf)
                 if X.empty:
                     self.monitor_state[key] = {
                         "signal": -1, "p_buy": None, "p_sell": None,
@@ -5948,155 +5168,7 @@ class FusionV2:
         last_idle_log = 0.0
         CACHE_CLEANUP_INTERVAL = 60  # A cada 60 segundos
 
-        while True:
-            loop_started = time.perf_counter()
-            now = datetime.now()
-            now_time = time.time()
-            min_cycle_seconds = max(1, int(self.runtime_control.get("loop.min_cycle_seconds", 60) or 60))
-            
-            # Limpar cache expirado periodicamente
-            if now_time - last_cache_cleanup > CACHE_CLEANUP_INTERVAL:
-                cleanup_started = time.perf_counter()
-                expired_keys = []
-                for key, (_, timestamp) in self.features_cache.items():
-                    if now_time - timestamp > self.features_cache_ttl + 10:
-                        expired_keys.append(key)
-                
-                for key in expired_keys:
-                    del self.features_cache[key]
-                
-                if expired_keys:
-                    self.logger.info(
-                        f"[CACHE] Limpeza: removidos {len(expired_keys)} itens "
-                        f"(hits={self.features_cache_hits} misses={self.features_cache_misses})"
-                    )
-
-                expired_rate_keys = []
-                for key, (_, timestamp, _) in self.rates_cache.items():
-                    if now_time - timestamp > self.rates_cache_ttl + 10:
-                        expired_rate_keys.append(key)
-                for key in expired_rate_keys:
-                    del self.rates_cache[key]
-                if expired_rate_keys:
-                    self.logger.info(
-                        f"[CACHE][RATES] Limpeza: removidos {len(expired_rate_keys)} itens "
-                        f"(hits={self.rates_cache_hits} misses={self.rates_cache_misses})"
-                    )
-                 
-                # Reset stats a cada limpeza
-                self.features_cache_hits = 0
-                self.features_cache_misses = 0
-                self.rates_cache_hits = 0
-                self.rates_cache_misses = 0
-                last_cache_cleanup = now_time
-                self._log_timing(
-                    "loop.cache_cleanup",
-                    cleanup_started,
-                    extra=(
-                        f"removidos_features={len(expired_keys)} removidos_rates={len(expired_rate_keys)} "
-                        f"hits_features={self.features_cache_hits} misses_features={self.features_cache_misses} "
-                        f"hits_rates={self.rates_cache_hits} misses_rates={self.rates_cache_misses}"
-                    )
-                )
-
-            # Inicializa fila apenas quando o ciclo anterior terminou e o tempo minimo foi respeitado
-            cycle_ready = False
-            if not self.processing_queue_initialized:
-                if self.processing_cycle_started_at <= 0.0:
-                    cycle_ready = True
-                elif self.processing_cycle_completed_at > 0.0 and (now_time - self.processing_cycle_completed_at) >= min_cycle_seconds:
-                    cycle_ready = True
-
-            if cycle_ready:
-                cycle_started = time.perf_counter()
-                self.processing_cycle_started_at = now_time
-                self.processing_cycle_completed_at = 0.0
-                self.logger.info(
-                    f"[LOOP] Novo ciclo: {now.strftime('%H:%M:%S')} - Inicializando fila de processamento "
-                    f"(min_cycle={min_cycle_seconds}s)..."
-                )
-                reload_started = time.perf_counter()
-                self.config.reload()
-                self._log_timing("loop.config_reload", reload_started)
-                self._refresh_oms_state()
-                self.actionable_signal_state = {}
-                self.final_signal_state = {}
-                self.cycle_order_symbols = set()
-
-                # Inicializa fila com todos (symbol, broker_sym, tf) combinations
-                self.processing_queue = []
-                for broker_sym, sym_ia in self.sync_dict.items():
-                    runtime_symbol_ok, runtime_symbol_reason = self._runtime_symbol_allowed(sym_ia)
-                    if not runtime_symbol_ok:
-                        for tf in self.TIMEFRAMES:
-                            self.monitor_state[(sym_ia, tf)] = {
-                                "signal": 0,
-                                "p_buy": 0.0,
-                                "p_sell": 0.0,
-                                "status": "RUNTIME_BLOCK",
-                                "reason": runtime_symbol_reason,
-                            }
-                    else:
-                        for tf in self.TIMEFRAMES:
-                            self.processing_queue.append((broker_sym, sym_ia, tf))
-
-                self.processing_queue_initialized = True
-                self._log_timing(
-                    "loop.queue_init",
-                    cycle_started,
-                    extra=f"ativos={len(self.sync_dict)} tf_por_ativo={len(self.TIMEFRAMES)} itens_fila={len(self.processing_queue)}"
-                )
-
-            if self.processing_queue_initialized and self.processing_queue:
-                batch_size = max(8, min(32, len(self.processing_queue) // 6 or 8))
-                batch_start = time.perf_counter()
-                processed = 0
-                while self.processing_queue and processed < batch_size:
-                    broker_sym, sym_ia, tf = self.processing_queue.pop(0)
-                    self._process_symbol_timeframe(broker_sym, sym_ia, tf, now, self.cycle_order_symbols, last_trade_time)
-                    processed += 1
-                    if processed >= 8 and (time.perf_counter() - batch_start) > 0.35:
-                        break
-                self._log_timing(
-                    "loop.batch_process",
-                    batch_start,
-                    extra=f"processados={processed} restantes={len(self.processing_queue)} batch_size={batch_size}"
-                )
-
-            # Quando fila esvazia, finaliza o ciclo
-            if self.processing_queue_initialized and not self.processing_queue:
-                finalize_started = time.perf_counter()
-                self._annotate_currency_strength_directional_signals()
-                self._annotate_currency_strength_neutrals()
-                self._build_final_signal_state()
-                self._print_dashboard_premium()
-                self._write_currency_strength_map()
-                self.mt5_signal_panel.export(
-                    self.monitor_state,
-                    symbols=[str(sym_ia).upper() for sym_ia in self.sync_dict.values()],
-                    timeframes=self.TIMEFRAMES,
-                    actionable_state=self.actionable_signal_state,
-                    final_state=self.final_signal_state,
-                )
-                self.mt5_trade_zones.export(
-                    self.monitor_state,
-                    symbol_map={str(broker): str(symbol).upper() for broker, symbol in self.sync_dict.items()},
-                    timeframes=self.TIMEFRAMES,
-                    mt5_module=mt5,
-                )
-                self.mt5_decision_layers.export(
-                    self.decision_layers_state,
-                    symbols=[str(sym_ia).upper() for sym_ia in self.sync_dict.values()],
-                )
-                self.processing_queue_initialized = False
-                self.processing_cycle_completed_at = now_time
-                self.cycle_order_symbols = set()
-                self._log_timing("loop.finalizacao_ciclo", finalize_started, extra=f"ativos={len(self.sync_dict)}")
-
-            if not self.processing_queue and now_time - last_idle_log >= 5.0:
-                last_idle_log = now_time
-                self._log_timing("loop.idle", loop_started, extra=f"fila={len(self.processing_queue)}")
-            time.sleep(0.2)
+        self.signal_loop_service.run()
 
     def _run_signals_legacy(self):
         """Loop principal de sinais e execuÃ§Ã£o."""
@@ -6118,7 +5190,7 @@ class FusionV2:
                             continue
                         
                         if self.trading.is_position_open(broker_sym, 0):
-                            X = self._calculate_features(broker_sym, tf)
+                            X = self.feature_calc.calculate_features(broker_sym, tf)
                             if not X.empty:
                                 try:
                                     pred, p_buy, p_sell = model.predict(X)
@@ -6134,7 +5206,7 @@ class FusionV2:
                             if (now - last_trade_time[cooldown_key]).seconds < cooldown_seconds:
                                 continue
                         
-                        X = self._calculate_features(broker_sym, tf)
+                        X = self.feature_calc.calculate_features(broker_sym, tf)
                         if X.empty:
                             self.monitor_state[key] = {"signal": 0, "p_buy": 0, "p_sell": 0, "status": "ERRO_DADOS"}
                             continue
@@ -6208,7 +5280,7 @@ class FusionV2:
             detail_lines = []
             reason_counts = {}
             for sym in sorted(symbols):
-                display = "GOLD" if sym == "XAUUSD" else sym
+                display = "GOLD" if sym == "gold" else sym
                 cells_raw = []
                 reasons = []
                 
@@ -6449,9 +5521,7 @@ class FusionV2:
             self.logger.info(f"[BOOT][run] {datetime.now().isoformat(timespec='seconds')} | initialize ok, iniciando trailing")
             self.start_trailing_loop()
             self.logger.info(f"[BOOT][run] {datetime.now().isoformat(timespec='seconds')} | trailing ok, entrando no monitoramento")
-            self._run_signals()
-            
-            
+            self.signal_loop_service.run()
         except KeyboardInterrupt:
             self.logger.warning("Sistema pausado pelo usuÃ¡rio")
         finally:
@@ -6468,5 +5538,3 @@ if __name__ == "__main__":
     
     fusion = FusionV2()
     fusion.run()
-
-
